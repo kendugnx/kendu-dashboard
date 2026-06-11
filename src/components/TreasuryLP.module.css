@@ -47,7 +47,6 @@
 
 @media (max-width: 720px) {
   .grid { grid-template-columns: repeat(2, 1fr); }
-  .title { font-size: 14px; letter-spacing: 0.06em; white-space: nowrap; }
 }
 @media (max-width: 400px) {
   .grid { grid-template-columns: 1fr; }

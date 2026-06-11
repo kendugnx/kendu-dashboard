@@ -77,7 +77,7 @@ export default function TreasuryLP({ collapsed, onToggle }) {
       <div className={styles.head}>
         <div>
           <div className="k-eyebrow">Treasury & Liquidity</div>
-          <strong className={styles.title}>Treasury & LPs</strong>
+          <strong className={styles.title}>Treasury & LP</strong>
         </div>
         <div className="k-head-actions">
           <RefreshButton spinning={spinning} onClick={trigger} />
