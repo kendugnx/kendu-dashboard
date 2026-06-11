@@ -300,11 +300,15 @@ export default async function handler(req, res) {
       const invested = parseFloat(parts[0]?.replace(/[$,]/g, ''))
       const buyMC    = parseMC(parts[1])
 
-      if (!invested || !buyMC) {
+      const buyMCRaw = parts[1]
+      const hasSuffix = /[kmbt]$/i.test(buyMCRaw || '')
+
+      if (!invested || !buyMC || !hasSuffix) {
         await sendMessage(chatId,
           `<b>USAGE:</b> /gains [AMOUNT] [BUY MC]\n` +
-          `E.G. /gains 500 2M\n` +
-          `E.G. /gains 1000 500K`
+          `E.G. /gains 500 2.5M\n` +
+          `E.G. /gains 1000 500K\n\n` +
+          `MC MUST INCLUDE A UNIT (K, M, B)`
         )
       } else {
         const currentMC  = await getMCap()
