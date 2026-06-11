@@ -64,12 +64,15 @@ export function drawXLabels(ctx, series, xScale, pad, H, fontSize, plotW = 9999)
   const maxLbls = Math.min(6, Math.max(2, Math.floor(plotW / 80)))
 
   // Pick evenly-spaced indices, always including first and last
-  const indices = new Set([0, N - 1])
-  if (maxLbls > 2) {
+  let ticks
+  if (N <= maxLbls) {
+    ticks = Array.from({ length: N }, (_, i) => i)
+  } else {
+    const indices = new Set([0, N - 1])
     const gap = (N - 1) / (maxLbls - 1)
     for (let k = 1; k < maxLbls - 1; k++) indices.add(Math.round(k * gap))
+    ticks = [...indices].sort((a, b) => a - b)
   }
-  const ticks = [...indices].sort((a, b) => a - b)
 
   ctx.fillStyle    = '#E6EDF3'
   ctx.font         = `${fontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
