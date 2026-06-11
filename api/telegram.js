@@ -184,8 +184,10 @@ function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
     }
   }
 
-  const encoded = encodeURIComponent(JSON.stringify(config))
-  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
+  const encoded  = encodeURIComponent(JSON.stringify(config))
+  const chartUrl = `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
+  const maskUrl  = encodeURIComponent('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png')
+  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(chartUrl)}&markImageUrl=${maskUrl}&markRatio=0.4&markAlpha=0.12&horizontal=center&vertical=center`
 }
 
 export default async function handler(req, res) {
