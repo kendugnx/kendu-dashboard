@@ -126,11 +126,9 @@ async function fetchHoldersCSV() {
   return rows.sort((a, b) => a.date - b.date)
 }
 
-function buildChartUrl(rows, days = null, rangeLabel = 'ALL TIME') {
-  const cutoff  = days ? Date.now() - days * 86400000 : null
-  const filtered = cutoff ? rows.filter(r => r.date.getTime() >= cutoff) : rows
-  const step    = Math.max(1, Math.floor(filtered.length / 40))
-  const sampled = filtered.filter((_, i) => i % step === 0 || i === filtered.length - 1)
+function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
+  const step    = Math.max(1, Math.floor(rows.length / 40))
+  const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
 
   const labels = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
   const data   = sampled.map(r => r.total)
@@ -140,42 +138,41 @@ function buildChartUrl(rows, days = null, rangeLabel = 'ALL TIME') {
     data: {
       labels,
       datasets: [{
-        label: rangeLabel,
+        label: '',
         data,
-        borderColor: '#F05C4E',
-        backgroundColor: 'rgba(240,92,78,0.15)',
-        borderWidth: 2.5,
+        borderColor: '#FF6B4A',
+        backgroundColor: 'rgba(255,107,74,0.2)',
+        borderWidth: 3,
         pointRadius: 0,
         fill: true,
-        tension: 0.3,
+        lineTension: 0.3,
       }]
     },
     options: {
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: rangeLabel,
-          color: '#F05C4E',
-          font: { size: 13, weight: 'bold' },
-        },
+      legend: { display: false },
+      title: {
+        display: true,
+        text: rangeLabel,
+        fontColor: '#FF6B4A',
+        fontSize: 14,
+        fontStyle: 'bold',
       },
       scales: {
-        x: {
-          ticks: { color: '#cccccc', maxTicksLimit: 5, maxRotation: 0, font: { size: 11 } },
-          grid:  { color: 'rgba(255,255,255,0.08)' },
-        },
-        y: {
-          ticks: { color: '#cccccc', font: { size: 11 } },
-          grid:  { color: 'rgba(255,255,255,0.08)' },
-        }
+        xAxes: [{
+          ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 },
+          gridLines: { color: 'rgba(255,255,255,0.15)' },
+        }],
+        yAxes: [{
+          ticks: { fontColor: '#ffffff', fontSize: 11 },
+          gridLines: { color: 'rgba(255,255,255,0.15)' },
+        }],
       },
       layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
   }
 
   const encoded = encodeURIComponent(JSON.stringify(config))
-  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F`
+  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
 }
 
 export default async function handler(req, res) {
@@ -248,7 +245,7 @@ export default async function handler(req, res) {
         `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
         deltaLine
 
-      const chartUrl = buildChartUrl(rows, rangeDays, rangeLabel)
+      const chartUrl = buildChartUrl(rangeRows, null, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/calc')) {
