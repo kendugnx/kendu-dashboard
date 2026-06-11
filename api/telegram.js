@@ -168,7 +168,7 @@ export default async function handler(req, res) {
         const currentTier  = tierFor(tokens)
 
         const lines = [
-          `<b>Holdings:</b> ${(tokens / 1e6).toFixed(2)}M tokens`,
+          `<b>Holding:</b> ${tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : (tokens / 1e6).toFixed(2) + 'M'} tokens`,
           `<b>Current MC:</b> ${fmt(mc)}`,
           `<b>Current Value:</b> ${fmt(currentValue)}`,
           `<b>Tier:</b> ${currentTier?.name ?? '—'}`,
