@@ -192,7 +192,7 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
   })
   const { url: shortUrl } = await shortRes.json()
   const maskUrl = encodeURIComponent('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png')
-  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(shortUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.1&markPos=center`
+  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(shortUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.1&markX=0.5&markY=0.5`
 }
 
 export default async function handler(req, res) {
