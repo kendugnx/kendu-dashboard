@@ -152,7 +152,9 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/calc')) {
       const parts = text.split(/\s+/).slice(1)
-      const tokens = parseTokens(parts[0])
+      // Allow tier name as first arg e.g. /calc whale
+      const tierMatch = parts[0] ? TIERS.find(t => t.name.toLowerCase() === parts[0].toLowerCase()) : null
+      const tokens = tierMatch ? tierMatch.min : parseTokens(parts[0])
       const targetMC = parseMC(parts[1])
 
       if (!tokens) {
