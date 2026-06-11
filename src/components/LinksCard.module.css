@@ -51,16 +51,6 @@
 }
 .linkCard:hover .linkArrow { opacity: 1; }
 
-.surpriseRow {
-  display: flex;
-  justify-content: center;
-}
-.surpriseRow .linkCard {
-  width: calc(25% - 8px);
-}
-@media (max-width: 720px) {
-  .surpriseRow .linkCard { width: calc(50% - 6px); }
-}
 
 .modalBackdrop {
   position: fixed;
