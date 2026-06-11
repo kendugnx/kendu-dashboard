@@ -71,17 +71,20 @@ export default async function handler(req, res) {
       )
 
     } else if (text.startsWith('/price')) {
-      const { ethPrice, ethChange, kenduPrice, kenduChange } = await getPrice()
+      const { ethPrice, ethChange, kenduChange } = await getPrice()
+      const mc = await getMCap()
       const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24h)`
-      const fmtPrice  = (p, decimals) => p != null ? `$${p.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}` : '—'
+      const ethStr = ethPrice != null ? `$${ethPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
       await sendMessage(chatId,
-        `<b>ETH</b>  ${fmtPrice(ethPrice, 2)}${fmtChange(ethChange)}\n` +
-        `<b>KENDU</b>  ${fmtPrice(kenduPrice, 8)}${fmtChange(kenduChange)}`
+        `<b>ETH</b>  ${ethStr}${fmtChange(ethChange)}\n` +
+        `<b>KENDU MC</b>  ${fmt(mc)}${fmtChange(kenduChange)}`
       )
 
     } else if (text.startsWith('/mcap')) {
+      const { kenduChange } = await getPrice()
       const mc = await getMCap()
-      await sendMessage(chatId, `<b>Kendu Market Cap</b>\n${fmt(mc)}`)
+      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24h)`
+      await sendMessage(chatId, `<b>Kendu Market Cap</b>\n${fmt(mc)}${fmtChange(kenduChange)}`)
 
     } else if (text.startsWith('/treasury')) {
       const j = await getHolders()
