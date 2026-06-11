@@ -15,5 +15,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.1"
+  },
+  "optionalDependencies": {
+    "@img/sharp-linux-x64": "^0.35.0"
   }
 }
