@@ -85,19 +85,19 @@ async function fetchAltSeason() {
   ])
   try {
     const r = await fetch(
-      API.coingecko('/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=90d'),
+      API.coingecko('/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=30d'),
       { cache: 'no-store' }
     )
     const list = await r.json()
     if (!Array.isArray(list)) throw new Error('Bad payload')
     const btc   = list.find(c => c.id === 'bitcoin' || c.symbol?.toLowerCase() === 'btc')
-    const btc90 = Number(btc?.price_change_percentage_90d_in_currency)
-    if (!isFinite(btc90)) throw new Error('No BTC 90d data')
+    const btc30 = Number(btc?.price_change_percentage_30d_in_currency)
+    if (!isFinite(btc30)) throw new Error('No BTC 30d data')
     const alts = list.filter(c =>
       c.id !== 'bitcoin' &&
       !EXCLUDE.has(String(c.symbol || '').toLowerCase())
     )
-    const out = alts.filter(c => Number(c.price_change_percentage_90d_in_currency) > btc90).length
+    const out = alts.filter(c => Number(c.price_change_percentage_30d_in_currency) > btc30).length
     return clamp(Math.round((out / Math.max(1, alts.length)) * 100), 0, 100)
   } catch {
     throw new Error('Alt season fetch failed')
