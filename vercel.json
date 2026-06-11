@@ -1,10 +1,5 @@
 {
-  "functions": {
-    "api/video.js": {
-      "includeFiles": "public/modern-family.mp4"
-    }
-  },
-  "rewrites": [{ "source": "/((?!assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
+"rewrites": [{ "source": "/((?!assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",
