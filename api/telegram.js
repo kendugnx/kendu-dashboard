@@ -330,11 +330,13 @@ export default async function handler(req, res) {
       }
 
     } else if (text.startsWith('/seejoshnudes')) {
-      await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, {
+      const r = await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, animation: 'https://kendu-dashboard.com/modern-family.mp4' }),
       })
+      const j = await r.json()
+      if (!j.ok) await sendMessage(chatId, `ANIM ERROR: ${JSON.stringify(j.description)}`)
 
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
