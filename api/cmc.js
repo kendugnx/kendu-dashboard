@@ -9,7 +9,10 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      },
       cache: 'no-store',
     })
     const data = await upstream.json()

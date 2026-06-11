@@ -78,30 +78,24 @@ async function fetchFNG() {
 
 async function fetchAltSeason() {
   // CMC methodology: % of top 100 alts that outperformed BTC over 90 days.
-  // Fetches via Vercel serverless proxy to avoid CORS/rate-limit issues.
+  // Uses CMC's own public data API for 90d data (matches their index).
   const EXCLUDE = new Set([
     'usdt','usdc','busd','dai','tusd','usdd','usde','fdusd','gusd','susd','lusd','pax',
     'wbtc','steth','cbeth','reth','wsteth','beth','clink','weth'
   ])
-  try {
-    const r = await fetch(
-      API.coingecko('/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=30d'),
-      { cache: 'no-store' }
-    )
-    const list = await r.json()
-    if (!Array.isArray(list)) throw new Error('Bad payload')
-    const btc   = list.find(c => c.id === 'bitcoin' || c.symbol?.toLowerCase() === 'btc')
-    const btc30 = Number(btc?.price_change_percentage_30d_in_currency)
-    if (!isFinite(btc30)) throw new Error('No BTC 30d data')
-    const alts = list.filter(c =>
-      c.id !== 'bitcoin' &&
-      !EXCLUDE.has(String(c.symbol || '').toLowerCase())
-    )
-    const out = alts.filter(c => Number(c.price_change_percentage_30d_in_currency) > btc30).length
-    return clamp(Math.round((out / Math.max(1, alts.length)) * 100), 0, 100)
-  } catch {
-    throw new Error('Alt season fetch failed')
-  }
+  const r = await fetch(
+    API.cmc('/data-api/v3/cryptocurrency/listing?start=1&limit=100&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all'),
+    { cache: 'no-store' }
+  )
+  const j = await r.json()
+  const list = j?.data?.cryptoCurrencyList
+  if (!Array.isArray(list)) throw new Error('Bad CMC payload')
+  const btc   = list.find(c => c.symbol?.toLowerCase() === 'btc')
+  const btc90 = Number(btc?.quotes?.[0]?.percentChange90d)
+  if (!isFinite(btc90)) throw new Error('No BTC 90d data')
+  const alts = list.filter(c => c.symbol?.toLowerCase() !== 'btc' && !EXCLUDE.has(c.symbol?.toLowerCase()))
+  const out  = alts.filter(c => Number(c.quotes?.[0]?.percentChange90d) > btc90).length
+  return clamp(Math.round((out / Math.max(1, alts.length)) * 100), 0, 100)
 }
 
 function etaFor(gas, base) {
