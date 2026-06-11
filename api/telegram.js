@@ -66,13 +66,12 @@ async function sendMessage(chatId, text) {
   })
 }
 
-async function sendPhoto(chatId, imageBuffer, caption) {
-  const form = new FormData()
-  form.append('chat_id', String(chatId))
-  form.append('caption', caption)
-  form.append('parse_mode', 'HTML')
-  form.append('photo', new Blob([imageBuffer], { type: 'image/jpeg' }), 'chart.jpg')
-  await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: form })
+async function sendPhoto(chatId, imageUrl, caption) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, photo: imageUrl, caption, parse_mode: 'HTML' }),
+  })
 }
 
 async function getPrice() {
@@ -175,22 +174,12 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
   const shortRes = await fetch('https://quickchart.io/chart/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: 'rgba(0,0,0,0)', version: '2' }),
+    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
   })
   const shortJson = await shortRes.json()
   const shortUrl  = shortJson.url
   if (!shortUrl) throw new Error('QuickChart error: ' + JSON.stringify(shortJson))
-
-  const [chartBuf, bgBuf] = await Promise.all([
-    fetch(shortUrl).then(r => r.arrayBuffer()).then(Buffer.from),
-    fetch('https://kendu-dashboard.com/chartbackground.jpg').then(r => r.arrayBuffer()).then(Buffer.from),
-  ])
-
-  const { default: sharp } = await import('sharp')
-  return sharp(bgBuf)
-    .composite([{ input: chartBuf, gravity: 'center' }])
-    .jpeg({ quality: 90 })
-    .toBuffer()
+  return shortUrl
 }
 
 export default async function handler(req, res) {
