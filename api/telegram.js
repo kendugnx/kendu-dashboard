@@ -138,7 +138,7 @@ function parseRange(str) {
   return [days, `${n} ${n === 1 ? sing : plur}`]
 }
 
-function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
+async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
   const title = `KENDU HOLDERS - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
@@ -184,10 +184,15 @@ function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
     }
   }
 
-  const encoded  = encodeURIComponent(JSON.stringify(config))
-  const chartUrl = `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
-  const maskUrl  = encodeURIComponent('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png')
-  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(chartUrl)}&markImageUrl=${maskUrl}&markRatio=0.4&markAlpha=0.12&horizontal=center&vertical=center`
+  // Use QuickChart's POST endpoint to get a short URL, then wrap with watermark
+  const shortRes = await fetch('https://quickchart.io/chart/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
+  })
+  const { url: shortUrl } = await shortRes.json()
+  const maskUrl = encodeURIComponent('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png')
+  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(shortUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.1&markPos=center`
 }
 
 export default async function handler(req, res) {
@@ -259,7 +264,7 @@ export default async function handler(req, res) {
         `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
         deltaLine
 
-      const chartUrl = buildChartUrl(rangeRows, rangeLabel)
+      const chartUrl = await buildChartUrl(rangeRows, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/calc')) {
