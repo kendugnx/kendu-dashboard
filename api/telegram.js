@@ -126,11 +126,10 @@ async function fetchHoldersCSV() {
   return rows.sort((a, b) => a.date - b.date)
 }
 
-function buildChartUrl(rows, days = null) {
-  const cutoff = days ? Date.now() - days * 86400000 : null
+function buildChartUrl(rows, days = null, rangeLabel = 'ALL TIME') {
+  const cutoff  = days ? Date.now() - days * 86400000 : null
   const filtered = cutoff ? rows.filter(r => r.date.getTime() >= cutoff) : rows
-  // Downsample to ~60 points max to keep URL short
-  const step = Math.max(1, Math.floor(filtered.length / 60))
+  const step    = Math.max(1, Math.floor(filtered.length / 40))
   const sampled = filtered.filter((_, i) => i % step === 0 || i === filtered.length - 1)
 
   const labels = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
@@ -141,11 +140,11 @@ function buildChartUrl(rows, days = null) {
     data: {
       labels,
       datasets: [{
-        label: '',
+        label: rangeLabel,
         data,
         borderColor: '#F05C4E',
-        backgroundColor: 'rgba(240,92,78,0.08)',
-        borderWidth: 2,
+        backgroundColor: 'rgba(240,92,78,0.15)',
+        borderWidth: 2.5,
         pointRadius: 0,
         fill: true,
         tension: 0.3,
@@ -153,24 +152,27 @@ function buildChartUrl(rows, days = null) {
     },
     options: {
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          labels: { color: '#F05C4E', font: { size: 13, weight: 'bold' }, boxWidth: 0 }
+        },
       },
       scales: {
         x: {
-          ticks: { color: '#9E9399', maxTicksLimit: 6, font: { size: 11 } },
-          grid:  { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: '#cccccc', maxTicksLimit: 5, maxRotation: 0, font: { size: 11 } },
+          grid:  { color: 'rgba(255,255,255,0.08)' },
         },
         y: {
-          ticks: { color: '#9E9399', font: { size: 11 } },
-          grid:  { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: '#cccccc', font: { size: 11 } },
+          grid:  { color: 'rgba(255,255,255,0.08)' },
         }
       },
-      layout: { padding: 10 },
+      layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
   }
 
   const encoded = encodeURIComponent(JSON.stringify(config))
-  return `https://quickchart.io/chart?c=${encoded}&w=600&h=300&bkg=%23201E1F`
+  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F`
 }
 
 export default async function handler(req, res) {
@@ -212,23 +214,35 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
-      const rangeDays = { '1y': 365, '6m': 182, '1m': 30, '1w': 7, '7d': 7, '3d': 3 }[parts[0]] ?? null
+      const RANGE_MAP = { '1y': [365, '1Y'], '6m': [182, '6M'], '1m': [30, '1M'], '1w': [7, '1W'], '7d': [7, '1W'], '3d': [3, '3D'] }
+      const [rangeDays, rangeLabel] = RANGE_MAP[parts[0]] ?? [null, 'ALL TIME']
 
       const rows = await fetchHoldersCSV()
       if (!rows.length) { await sendMessage(chatId, 'ERROR LOADING HOLDER DATA.'); return res.status(200).send('OK') }
 
       const latest = rows[rows.length - 1]
-      const first  = rows[0]
-      const delta  = latest.total - first.total
+      const cutoff = rangeDays ? Date.now() - rangeDays * 86400000 : null
+      const rangeRows = cutoff ? rows.filter(r => r.date.getTime() >= cutoff) : rows
+      const first = rangeRows[0] ?? rows[0]
+
+      const dTotal = latest.total - first.total
+      const dEth   = isFinite(latest.eth)  && isFinite(first.eth)  ? latest.eth  - first.eth  : null
+      const dBase  = isFinite(latest.base) && isFinite(first.base) ? latest.base - first.base : null
+      const dSol   = isFinite(latest.sol)  && isFinite(first.sol)  ? latest.sol  - first.sol  : null
+
+      const sign = n => n >= 0 ? `+${n.toLocaleString()}` : n.toLocaleString()
 
       const caption =
         `<b>TOTAL HOLDERS: ${latest.total.toLocaleString()}</b>\n` +
         `ETH: ${isFinite(latest.eth) ? latest.eth.toLocaleString() : '—'}  ` +
         `BASE: ${isFinite(latest.base) && latest.base > 0 ? latest.base.toLocaleString() : '—'}  ` +
         `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}\n` +
-        `Δ ALL TIME: +${delta.toLocaleString()}`
+        `Δ ${rangeLabel}: ${sign(dTotal)}` +
+        (dEth  != null ? `  ETH ${sign(dEth)}`  : '') +
+        (dBase != null && dBase !== 0 ? `  BASE ${sign(dBase)}` : '') +
+        (dSol  != null && dSol  !== 0 ? `  SOL ${sign(dSol)}`  : '')
 
-      const chartUrl = buildChartUrl(rows, rangeDays)
+      const chartUrl = buildChartUrl(rows, rangeDays, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/calc')) {
