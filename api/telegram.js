@@ -209,8 +209,8 @@ export default async function handler(req, res) {
       const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24H)`
       const ethStr = ethPrice != null ? `$${ethPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
       await sendMessage(chatId,
-        `<b>ETH</b>  ${ethStr}${fmtChange(ethChange)}\n` +
-        `<b>KENDU MC</b>  ${fmt(mc)}${fmtChange(kenduChange)}`
+        `<b>ETH PRICE</b>\n${ethStr}${fmtChange(ethChange)}\n\n` +
+        `<b>KENDU MARKET CAP</b>\n${fmt(mc)}${fmtChange(kenduChange)}`
       )
 
     } else if (text.startsWith('/mcap')) {
