@@ -103,9 +103,20 @@ export default async function handler(req, res) {
       )
 
     } else if (text.startsWith('/dashboard')) {
-      await sendMessage(chatId,
-        `<b>Kendu Dashboard</b>\nhttps://kendu-dashboard.com`
-      )
+      await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: '<b>Kendu Dashboard</b>',
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🚀 Open Dashboard', web_app: { url: 'https://kendu-dashboard.com' } }
+            ]]
+          }
+        })
+      })
     }
   } catch (e) {
     await sendMessage(chatId, 'Error fetching data. Try again in a moment.')
