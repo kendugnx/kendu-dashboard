@@ -139,20 +139,20 @@ function parseRange(str) {
 }
 
 async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
-  const title = `KENDU HOLDERS - ${rangeLabel}`
+  const title   = `KENDU HOLDERS - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
+  const labels  = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+  const data    = sampled.map(r => r.total)
 
-  const labels = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
-  const data   = sampled.map(r => r.total)
-
-  const config = {
+  // Pass config as JS string so QuickChart evaluates the beforeDraw plugin function
+  const configStr = `{
     type: 'line',
     data: {
-      labels,
+      labels: ${JSON.stringify(labels)},
       datasets: [{
         label: '',
-        data,
+        data: ${JSON.stringify(data)},
         borderColor: '#FF6B4A',
         backgroundColor: 'rgba(255,107,74,0.2)',
         borderWidth: 3,
@@ -161,38 +161,44 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
         lineTension: 0.3,
       }]
     },
+    plugins: [{
+      afterDraw: function(chart) {
+        var ctx = chart.ctx;
+        var img = new Image();
+        img.src = 'https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png';
+        var size = chart.width * 0.32;
+        var x = (chart.width  - size) / 2;
+        var y = (chart.height - size) / 2;
+        ctx.save();
+        ctx.globalAlpha = 0.1;
+        ctx.drawImage(img, x, y, size, size);
+        ctx.restore();
+      }
+    }],
     options: {
       legend: { display: false },
       title: {
         display: true,
-        text: title,
+        text: ${JSON.stringify(title)},
         fontColor: '#FF6B4A',
         fontSize: 14,
         fontStyle: 'bold',
       },
       scales: {
-        xAxes: [{
-          ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 },
-          gridLines: { color: 'rgba(255,255,255,0.15)' },
-        }],
-        yAxes: [{
-          ticks: { fontColor: '#ffffff', fontSize: 11 },
-          gridLines: { color: 'rgba(255,255,255,0.15)' },
-        }],
+        xAxes: [{ ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
+        yAxes: [{ ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
       },
       layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
-  }
+  }`
 
-  // Use QuickChart's POST endpoint to get a short URL, then wrap with watermark
   const shortRes = await fetch('https://quickchart.io/chart/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
+    body: JSON.stringify({ chart: configStr, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
   })
   const { url: shortUrl } = await shortRes.json()
-  const maskUrl = encodeURIComponent('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png')
-  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(shortUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.1&markX=0.5&markY=0.5`
+  return shortUrl
 }
 
 export default async function handler(req, res) {
