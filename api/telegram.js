@@ -1,6 +1,54 @@
 // api/telegram.js — Telegram bot webhook handler
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
-console.log('TOKEN loaded:', !!TOKEN)
+
+const SUPPLY = 996.74e9
+
+const TIERS = [
+  { name: 'Seaweed',       min: 0,      max: 1e6   },
+  { name: 'Plankton',      min: 1e6,    max: 5e6   },
+  { name: 'Shrimp',        min: 5e6,    max: 10e6  },
+  { name: 'Magikarp',      min: 10e6,   max: 20e6  },
+  { name: 'Crab',          min: 20e6,   max: 35e6  },
+  { name: 'Sardine',       min: 35e6,   max: 50e6  },
+  { name: 'Stingray',      min: 50e6,   max: 75e6  },
+  { name: 'Octopus',       min: 75e6,   max: 100e6 },
+  { name: 'Dolphin',       min: 100e6,  max: 150e6 },
+  { name: 'Barracuda',     min: 150e6,  max: 200e6 },
+  { name: 'Shark',         min: 200e6,  max: 300e6 },
+  { name: 'Orca',          min: 300e6,  max: 400e6 },
+  { name: 'Swordfish',     min: 400e6,  max: 500e6 },
+  { name: 'Whale',         min: 500e6,  max: 700e6 },
+  { name: 'Leviathan',     min: 700e6,  max: 900e6 },
+  { name: 'Kraken',        min: 900e6,  max: 1.2e9 },
+  { name: 'Chadasaurus',   min: 1.2e9,  max: 1.6e9 },
+  { name: 'Megalodon',     min: 1.6e9,  max: 2.3e9 },
+  { name: 'Gyrados',       min: 2.3e9,  max: 3.5e9 },
+  { name: 'Godwhale',      min: 3.5e9,  max: 4.5e9 },
+  { name: 'Kendu Eternal', min: 4.5e9,  max: Infinity },
+]
+
+function tierFor(tokens) {
+  if (!isFinite(tokens) || tokens <= 0) return null
+  return TIERS.find(t => tokens >= t.min && tokens < t.max) || TIERS[TIERS.length - 1]
+}
+
+function parseTokens(str) {
+  if (!str) return null
+  const m = str.toUpperCase().match(/^([\d.]+)\s*([KMBT]?)$/)
+  if (!m) return null
+  const n = parseFloat(m[1])
+  const mult = { '': 1, 'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12 }[m[2]] ?? 1
+  return n * mult
+}
+
+function parseMC(str) {
+  if (!str) return null
+  const m = str.replace(/\$/g, '').toUpperCase().match(/^([\d.]+)\s*([KMBT]?)$/)
+  if (!m) return null
+  const n = parseFloat(m[1])
+  const mult = { '': 1, 'K': 1e3, 'M': 1e6, 'B': 1e9, 'T': 1e12 }[m[2]] ?? 1
+  return n * mult
+}
 
 async function sendMessage(chatId, text) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
@@ -101,6 +149,50 @@ export default async function handler(req, res) {
       await sendMessage(chatId,
         `<b>Holder Counts</b>\nVisit the dashboard for live holder data:\nhttps://kendu-dashboard.com`
       )
+
+    } else if (text.startsWith('/calc')) {
+      const parts = text.split(/\s+/).slice(1)
+      const tokens = parseTokens(parts[0])
+      const targetMC = parseMC(parts[1])
+
+      if (!tokens) {
+        await sendMessage(chatId,
+          `<b>Usage:</b>\n/calc [holdings] — e.g. /calc 500M\n/calc [holdings] [target MC] — e.g. /calc 500M 1B`
+        )
+      } else {
+        const mc = await getMCap()
+        const pricePerToken = mc / SUPPLY
+        const currentValue = tokens * pricePerToken
+        const currentTier  = tierFor(tokens)
+
+        const lines = [
+          `<b>Holdings:</b> ${(tokens / 1e6).toFixed(2)}M tokens`,
+          `<b>Current MC:</b> ${fmt(mc)}`,
+          `<b>Current Value:</b> ${fmt(currentValue)}`,
+          `<b>Tier:</b> ${currentTier?.name ?? '—'}`,
+        ]
+
+        if (targetMC) {
+          const targetPrice = targetMC / SUPPLY
+          const targetValue = tokens * targetPrice
+          const multiplier  = targetValue / currentValue
+          lines.push(``)
+          lines.push(`<b>Target MC:</b> ${fmt(targetMC)}`)
+          lines.push(`<b>Value @ Target:</b> ${fmt(targetValue)}`)
+          lines.push(`<b>Multiplier:</b> ${multiplier.toFixed(2)}x`)
+        }
+
+        // Tier values at current MC
+        lines.push(``)
+        lines.push(`<b>Tier values @ current MC:</b>`)
+        const nearbyTiers = TIERS.filter(t => t.max !== Infinity).slice(0, 8)
+        for (const t of nearbyTiers) {
+          const val = t.min * pricePerToken
+          lines.push(`${t.name}: ${fmt(t.min / 1e6)}M → ${fmt(val)}`)
+        }
+
+        await sendMessage(chatId, lines.join('\n'))
+      }
 
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
