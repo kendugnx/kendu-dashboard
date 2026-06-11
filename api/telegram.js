@@ -152,8 +152,13 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/calc')) {
       const parts = text.split(/\s+/).slice(1)
-      const tierMatch = parts[0] ? TIERS.find(t => t.name.toLowerCase() === parts[0].toLowerCase()) : null
-      const tokens = tierMatch ? tierMatch.min : parseTokens(parts[0])
+      const input = parts[0]?.toLowerCase()
+      const tierMatch = input ? TIERS.find(t =>
+        t.name.toLowerCase() === input ||
+        t.name.toLowerCase() === `kendu ${input}` ||
+        `kendu ${t.name.toLowerCase()}` === input
+      ) : null
+      const tokens = tierMatch ? tierMatch.min : parseTokens(input)
       const targetMC = parseMC(parts[1])
 
       if (!tokens) {
