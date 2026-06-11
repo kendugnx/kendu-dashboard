@@ -176,9 +176,11 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
   const shortRes = await fetch('https://quickchart.io/chart/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: 'transparent', version: '2' }),
+    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: 'rgba(0,0,0,0)', version: '2' }),
   })
-  const { url: shortUrl } = await shortRes.json()
+  const shortJson = await shortRes.json()
+  const shortUrl  = shortJson.url
+  if (!shortUrl) throw new Error('QuickChart error: ' + JSON.stringify(shortJson))
 
   const [chartBuf, bgBuf] = await Promise.all([
     fetch(shortUrl).then(r => r.arrayBuffer()).then(Buffer.from),
