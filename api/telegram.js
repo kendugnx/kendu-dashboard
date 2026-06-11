@@ -329,6 +329,9 @@ export default async function handler(req, res) {
         )
       }
 
+    } else if (text.startsWith('/wafe')) {
+      await sendMessage(chatId, 'THE KENDU WAFE STARTS WITH SMALL VOLUME INCREASES')
+
     } else if (text.startsWith('/seejoshnudes')) {
       const mp4 = await fetch('https://kendu-dashboard.com/api/video')
       const buf = await mp4.arrayBuffer()
