@@ -10,9 +10,19 @@ async function sendMessage(chatId, text) {
 }
 
 async function getPrice() {
-  const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' })
-  const j = await r.json()
-  return { price: j.ethereum?.usd, change: j.ethereum?.usd_24h_change }
+  const [ethRes, kenduRes] = await Promise.all([
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' }),
+    fetch('https://api.dexscreener.com/latest/dex/tokens/0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18', { cache: 'no-store' }),
+  ])
+  const ethJson   = await ethRes.json()
+  const kenduJson = await kenduRes.json()
+  const pair = (kenduJson?.pairs || []).find(p => p.chainId === 'ethereum') || kenduJson?.pairs?.[0]
+  return {
+    ethPrice:   ethJson.ethereum?.usd,
+    ethChange:  ethJson.ethereum?.usd_24h_change,
+    kenduPrice: pair?.priceUsd ? Number(pair.priceUsd) : null,
+    kenduChange: pair?.priceChange?.h24 ? Number(pair.priceChange.h24) : null,
+  }
 }
 
 async function getHolders() {
@@ -61,12 +71,12 @@ export default async function handler(req, res) {
       )
 
     } else if (text.startsWith('/price')) {
-      const { price, change } = await getPrice()
-      const sign = change > 0 ? '▲' : '▼'
-      const pct  = Math.abs(change).toFixed(2)
+      const { ethPrice, ethChange, kenduPrice, kenduChange } = await getPrice()
+      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24h)`
+      const fmtPrice  = (p, decimals) => p != null ? `$${p.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}` : '—'
       await sendMessage(chatId,
-        `<b>ETH Price</b>\n` +
-        `$${price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${sign} ${pct}% (24h)`
+        `<b>ETH</b>  ${fmtPrice(ethPrice, 2)}${fmtChange(ethChange)}\n` +
+        `<b>KENDU</b>  ${fmtPrice(kenduPrice, 8)}${fmtChange(kenduChange)}`
       )
 
     } else if (text.startsWith('/mcap')) {
