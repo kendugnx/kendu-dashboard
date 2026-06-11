@@ -323,7 +323,7 @@ export default async function handler(req, res) {
           `<b>INVESTED:</b> ${fmtUSD(invested)}\n` +
           `<b>BUY MC:</b> ${fmt(buyMC)}\n` +
           `<b>CURRENT MC:</b> ${fmt(currentMC)}\n\n` +
-          `<b>MULTIPLIER:</b> ${multiplier.toFixed(2)}X\n` +
+          `<b>MULTIPLIER:</b> ${multiplier.toFixed(2)}X (${pnlSign}${((multiplier - 1) * 100).toFixed(0)}%)\n` +
           `<b>CURRENT VALUE:</b> ${fmtUSD(value)}\n` +
           `<b>PNL:</b> ${pnlSign}${fmtUSD(pnl)}`
         )
