@@ -145,14 +145,13 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
   const labels  = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
   const data    = sampled.map(r => r.total)
 
-  // Pass config as JS string so QuickChart evaluates the beforeDraw plugin function
-  const configStr = `{
+  const config = {
     type: 'line',
     data: {
-      labels: ${JSON.stringify(labels)},
+      labels,
       datasets: [{
         label: '',
-        data: ${JSON.stringify(data)},
+        data,
         borderColor: '#FF6B4A',
         backgroundColor: 'rgba(255,107,74,0.2)',
         borderWidth: 3,
@@ -161,41 +160,21 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
         lineTension: 0.3,
       }]
     },
-    plugins: [{
-      afterDraw: function(chart) {
-        var ctx = chart.ctx;
-        var img = new Image();
-        img.src = 'https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png';
-        var size = chart.width * 0.32;
-        var x = (chart.width  - size) / 2;
-        var y = (chart.height - size) / 2;
-        ctx.save();
-        ctx.globalAlpha = 0.1;
-        ctx.drawImage(img, x, y, size, size);
-        ctx.restore();
-      }
-    }],
     options: {
       legend: { display: false },
-      title: {
-        display: true,
-        text: ${JSON.stringify(title)},
-        fontColor: '#FF6B4A',
-        fontSize: 14,
-        fontStyle: 'bold',
-      },
+      title: { display: true, text: title, fontColor: '#FF6B4A', fontSize: 14, fontStyle: 'bold' },
       scales: {
         xAxes: [{ ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
         yAxes: [{ ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
       },
       layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
-  }`
+  }
 
   const shortRes = await fetch('https://quickchart.io/chart/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chart: configStr, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
+    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
   })
   const { url: shortUrl } = await shortRes.json()
   return shortUrl
