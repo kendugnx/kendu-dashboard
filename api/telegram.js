@@ -126,17 +126,20 @@ async function fetchHoldersCSV() {
   return rows.sort((a, b) => a.date - b.date)
 }
 
-const RANGE_TITLES = {
-  'ALL TIME': 'KENDU HOLDERS - ALL TIME',
-  '1Y': 'KENDU HOLDERS - 1 YEAR',
-  '6M': 'KENDU HOLDERS - 6 MONTHS',
-  '1M': 'KENDU HOLDERS - 1 MONTH',
-  '1W': 'KENDU HOLDERS - 1 WEEK',
-  '3D': 'KENDU HOLDERS - 3 DAYS',
+function parseRange(str) {
+  if (!str) return [null, 'ALL TIME']
+  const m = str.match(/^(\d+)(d|w|m|y)$/i)
+  if (!m) return [null, 'ALL TIME']
+  const n = parseInt(m[1])
+  const unit = m[2].toLowerCase()
+  const days = n * { d: 1, w: 7, m: 30, y: 365 }[unit]
+  const names = { d: ['DAY','DAYS'], w: ['WEEK','WEEKS'], m: ['MONTH','MONTHS'], y: ['YEAR','YEARS'] }
+  const [sing, plur] = names[unit]
+  return [days, `${n} ${n === 1 ? sing : plur}`]
 }
 
-function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
-  const title = RANGE_TITLES[rangeLabel] ?? `KENDU HOLDERS - ${rangeLabel}`
+function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
+  const title = `KENDU HOLDERS - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
 
@@ -182,9 +185,7 @@ function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
   }
 
   const encoded = encodeURIComponent(JSON.stringify(config))
-  const chartUrl = `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
-  const maskUrl  = encodeURIComponent('https://kendu-dashboard.com/kendu-mask.png')
-  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(chartUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.08&horizontal=center&vertical=center`
+  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
 }
 
 export default async function handler(req, res) {
@@ -226,8 +227,7 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
-      const RANGE_MAP = { '1y': [365, '1Y'], '6m': [182, '6M'], '1m': [30, '1M'], '1w': [7, '1W'], '7d': [7, '1W'], '3d': [3, '3D'] }
-      const [rangeDays, rangeLabel] = RANGE_MAP[parts[0]] ?? [null, 'ALL TIME']
+      const [rangeDays, rangeLabel] = parseRange(parts[0])
 
       const rows = await fetchHoldersCSV()
       if (!rows.length) { await sendMessage(chatId, 'ERROR LOADING HOLDER DATA.'); return res.status(200).send('OK') }
@@ -257,7 +257,7 @@ export default async function handler(req, res) {
         `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
         deltaLine
 
-      const chartUrl = buildChartUrl(rangeRows, null, rangeLabel)
+      const chartUrl = buildChartUrl(rangeRows, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/calc')) {
