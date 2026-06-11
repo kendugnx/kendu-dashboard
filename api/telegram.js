@@ -1,4 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
+import sharp from 'sharp'
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
 const SUPPLY = 996.74e9
@@ -66,12 +67,13 @@ async function sendMessage(chatId, text) {
   })
 }
 
-async function sendPhoto(chatId, imageUrl, caption) {
-  await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, photo: imageUrl, caption, parse_mode: 'HTML' }),
-  })
+async function sendPhoto(chatId, imageBuffer, caption) {
+  const form = new FormData()
+  form.append('chat_id', String(chatId))
+  form.append('caption', caption)
+  form.append('parse_mode', 'HTML')
+  form.append('photo', new Blob([imageBuffer], { type: 'image/png' }), 'chart.png')
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: form })
 }
 
 async function getPrice() {
@@ -177,7 +179,34 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
     body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
   })
   const { url: shortUrl } = await shortRes.json()
-  return shortUrl
+
+  // Fetch chart + logo in parallel, then composite
+  const [chartBuf, logoBuf] = await Promise.all([
+    fetch(shortUrl).then(r => r.arrayBuffer()).then(Buffer.from),
+    fetch('https://kendu-dashboard.com/Kendu%20Mask%20Logo%20-%20White.png').then(r => r.arrayBuffer()).then(Buffer.from),
+  ])
+
+  const chartMeta = await sharp(chartBuf).metadata()
+  const logoSize  = Math.round(chartMeta.width * 0.32)
+
+  // Resize logo and reduce alpha to 10%
+  const { data, info } = await sharp(logoBuf)
+    .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  for (let i = 3; i < data.length; i += 4) data[i] = Math.round(data[i] * 0.12)
+
+  const dimmedLogo = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer()
+
+  return sharp(chartBuf)
+    .composite([{
+      input: dimmedLogo,
+      gravity: 'center',
+    }])
+    .png()
+    .toBuffer()
 }
 
 export default async function handler(req, res) {
