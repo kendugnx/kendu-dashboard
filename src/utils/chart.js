@@ -61,7 +61,7 @@ export function drawYGrid(ctx, ticks, pad, W, H, fmtFn, fontSize) {
 // ---- Draw X axis date labels ----
 export function drawXLabels(ctx, series, xScale, pad, H, fontSize, plotW = 9999) {
   const N       = series.length
-  const maxLbls = Math.min(6, Math.max(2, Math.floor(plotW / 80)))
+  const maxLbls = Math.min(8, Math.max(2, Math.floor(plotW / 80)))
 
   // Pick evenly-spaced indices, always including first and last
   let ticks
