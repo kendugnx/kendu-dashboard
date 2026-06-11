@@ -14,6 +14,7 @@ const LINKS = [
   { label: 'Conviction',     url: 'https://kenduconviction.com',                desc: 'Kendu Conviction' },
   { label: 'Spice',          url: 'https://kenduspice.com',                     desc: 'Kendu Spice' },
   { label: 'Energy',         url: 'https://kenduenergy.com',                    desc: 'Kendu Energy' },
+  { label: 'Racing',         url: 'https://www.kendu-racing.com',               desc: 'Kendu Racing' },
   { label: 'Kendu Surprise', url: null,                                         desc: '👀 👀 👀 👀' },
 ]
 
@@ -41,31 +42,26 @@ export default function LinksCard({ collapsed, onToggle }) {
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
         <div className={styles.grid}>
-          {LINKS.map(({ label, url, desc }) =>
-            url === null ? (
-              <button
-                key={label}
-                onClick={() => setVideoOpen(true)}
-                className={styles.linkCard}
-              >
-                <span className={styles.linkLabel}>{label}</span>
-                <span className={styles.linkDesc}>{desc}</span>
-                <span className={styles.linkArrow}>▶</span>
-              </button>
-            ) : (
-              <a
-                key={label}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.linkCard}
-              >
-                <span className={styles.linkLabel}>{label}</span>
-                <span className={styles.linkDesc}>{desc}</span>
-                <span className={styles.linkArrow}>↗</span>
-              </a>
-            )
-          )}
+          {LINKS.filter(l => l.url !== null).map(({ label, url, desc }) => (
+            <a
+              key={label}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.linkCard}
+            >
+              <span className={styles.linkLabel}>{label}</span>
+              <span className={styles.linkDesc}>{desc}</span>
+              <span className={styles.linkArrow}>↗</span>
+            </a>
+          ))}
+        </div>
+        <div className={styles.surpriseRow}>
+          <button onClick={() => setVideoOpen(true)} className={styles.linkCard}>
+            <span className={styles.linkLabel}>Kendu Surprise</span>
+            <span className={styles.linkDesc}>👀 👀 👀 👀</span>
+            <span className={styles.linkArrow}>▶</span>
+          </button>
         </div>
       </div></div>
 
