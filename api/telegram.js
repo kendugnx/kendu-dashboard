@@ -152,9 +152,12 @@ function buildChartUrl(rows, days = null, rangeLabel = 'ALL TIME') {
     },
     options: {
       plugins: {
-        legend: {
+        legend: { display: false },
+        title: {
           display: true,
-          labels: { color: '#F05C4E', font: { size: 13, weight: 'bold' }, boxWidth: 0 }
+          text: rangeLabel,
+          color: '#F05C4E',
+          font: { size: 13, weight: 'bold' },
         },
       },
       scales: {
@@ -232,15 +235,18 @@ export default async function handler(req, res) {
 
       const sign = n => n >= 0 ? `+${n.toLocaleString()}` : n.toLocaleString()
 
+      const deltaLine = rangeDays == null ? '' :
+        `\nΔ ${rangeLabel}: ${sign(dTotal)}` +
+        (dEth  != null ? `  ETH ${sign(dEth)}`  : '') +
+        (dBase != null && dBase !== 0 ? `  BASE ${sign(dBase)}` : '') +
+        (dSol  != null && dSol  !== 0 ? `  SOL ${sign(dSol)}`  : '')
+
       const caption =
         `<b>TOTAL HOLDERS: ${latest.total.toLocaleString()}</b>\n` +
         `ETH: ${isFinite(latest.eth) ? latest.eth.toLocaleString() : '—'}  ` +
         `BASE: ${isFinite(latest.base) && latest.base > 0 ? latest.base.toLocaleString() : '—'}  ` +
-        `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}\n` +
-        `Δ ${rangeLabel}: ${sign(dTotal)}` +
-        (dEth  != null ? `  ETH ${sign(dEth)}`  : '') +
-        (dBase != null && dBase !== 0 ? `  BASE ${sign(dBase)}` : '') +
-        (dSol  != null && dSol  !== 0 ? `  SOL ${sign(dSol)}`  : '')
+        `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
+        deltaLine
 
       const chartUrl = buildChartUrl(rows, rangeDays, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)

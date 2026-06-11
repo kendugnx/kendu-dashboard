@@ -60,10 +60,16 @@ export function drawYGrid(ctx, ticks, pad, W, H, fmtFn, fontSize) {
 
 // ---- Draw X axis date labels ----
 export function drawXLabels(ctx, series, xScale, pad, H, fontSize, plotW = 9999) {
-  const N        = series.length
-  const maxLbls  = Math.min(10, Math.max(3, Math.floor(plotW / 80)))
-  const step     = Math.max(1, Math.ceil(N / maxLbls))
-  const startIdx = Math.max(0, (N - 1) % step)
+  const N       = series.length
+  const maxLbls = Math.min(6, Math.max(2, Math.floor(plotW / 80)))
+
+  // Pick evenly-spaced indices, always including first and last
+  const indices = new Set([0, N - 1])
+  if (maxLbls > 2) {
+    const gap = (N - 1) / (maxLbls - 1)
+    for (let k = 1; k < maxLbls - 1; k++) indices.add(Math.round(k * gap))
+  }
+  const ticks = [...indices].sort((a, b) => a - b)
 
   ctx.fillStyle    = '#E6EDF3'
   ctx.font         = `${fontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
@@ -71,11 +77,10 @@ export function drawXLabels(ctx, series, xScale, pad, H, fontSize, plotW = 9999)
   ctx.textBaseline = 'alphabetic'
 
   const chartRight = pad.l + plotW
-  for (let i = startIdx; i < N; i += step) {
+  for (const i of ticks) {
     const d = series[i].d
     const rawX = xScale(i)
-    // Clamp so last label doesn't clip right edge
-    const x = Math.min(rawX, chartRight - 28)
+    const x = Math.min(Math.max(rawX, pad.l + 20), chartRight - 28)
     const top    = d.toLocaleString('en-US', { month: 'short' }).toUpperCase()
     const bottom = String(d.getDate()).padStart(2, '0') + ' ' + d.getFullYear()
     ctx.fillText(top,    x, pad.t + H + fontSize * 0.9 + 4)
