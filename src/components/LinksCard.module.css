@@ -25,6 +25,13 @@
   text-decoration: none;
   transition: border-color 0.15s, background 0.15s;
   position: relative;
+  /* reset button defaults */
+  font-family: var(--font);
+  font-size: inherit;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+  text-transform: uppercase;
 }
 .linkCard:hover {
   border-color: var(--accent2);

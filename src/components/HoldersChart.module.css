@@ -113,8 +113,16 @@
 @media (max-width: 640px) {
   .controls { gap: 6px; }
   .rightChips { display: none; }
-  .rangeChips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
-  .rangeChips::-webkit-scrollbar { display: none; }
-  .statsRow { gap: 6px; }
-  .statPill { font-size: 11px; padding: 6px 10px; }
+  .rangeInput { width: 90px; font-size: 11px; }
+  .statsRow { flex-wrap: nowrap; gap: 4px; }
+  .statPill {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 1px;
+    font-size: 10px;
+    padding: 5px 4px;
+  }
 }

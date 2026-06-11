@@ -15,7 +15,7 @@ function pickBestPair(pairs) {
   return arr[0]
 }
 
-const RANGES = ['All', '1Y', '6M', '3M', '1M', '7D', '3D']
+const RANGES = ['All', '1Y', '6M', '1M', '7D']
 const MA_OPTS = [9, 26, 50, 200]
 
 function parseCustomRange(str) {
