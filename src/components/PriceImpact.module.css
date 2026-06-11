@@ -1,0 +1,265 @@
+.wrap {
+  padding: 20px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  text-transform: uppercase;
+  --body-gap: 16px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
+/* ---- Pool stats ---- */
+.poolRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.poolCard {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), .2);
+  background: rgba(255,255,255,.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 2px solid var(--chain-color, var(--accent2));
+}
+
+.poolLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.poolVal {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+
+/* ---- Controls ---- */
+.controlsRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.buyChip.active  { background: rgba(var(--accent-rgb), .15) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+.sellChip.active { background: rgba(220,60,60,.12) !important; border-color: #e05555 !important; color: #e05555 !important; }
+
+/* ---- Input row ---- */
+.inputRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.inputCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usdWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.usdPrefix {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  pointer-events: none;
+}
+
+.input {
+  padding: 10px 12px;
+  padding-left: 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), .4);
+  background: var(--card);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  outline: none;
+  text-transform: uppercase;
+  height: 40px;
+  box-sizing: border-box;
+  width: 160px;
+}
+.input:focus { border-color: var(--accent2); }
+.input::placeholder { color: var(--muted); font-weight: 500; }
+
+/* ---- Result grid ---- */
+.resultGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.resultCard {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), .2);
+  background: rgba(255,255,255,.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resultMain {
+  border-color: rgba(var(--accent2-rgb), .5);
+  background: rgba(var(--accent2-rgb), .06);
+}
+
+.resultLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.resultVal {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.resultSub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* ---- Equivalent trades ---- */
+.equivSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.equivHeader {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.equivGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.equivCard {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), .2);
+  background: rgba(255,255,255,.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid var(--chain-color, var(--accent2));
+}
+
+.equivChain {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--chain-color, var(--accent2));
+}
+
+.equivVal {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.equivSub {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---- Disclaimer ---- */
+.disclaimer {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent3-rgb), .2);
+  background: rgba(var(--accent3-rgb), .04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.disclaimerTitle {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent3);
+}
+
+.disclaimerList {
+  margin: 0;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.disclaimerList li {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  text-transform: none;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 720px) {
+  .poolRow   { grid-template-columns: repeat(3, 1fr); }
+  .resultGrid { grid-template-columns: repeat(2, 1fr); }
+  .equivGrid  { grid-template-columns: repeat(3, 1fr); }
+  .inputRow   { flex-direction: column; align-items: stretch; }
+  .input      { width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .resultGrid { grid-template-columns: 1fr; }
+  .equivGrid  { grid-template-columns: 1fr; }
+}

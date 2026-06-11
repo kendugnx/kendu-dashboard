@@ -1,0 +1,88 @@
+.wrap { padding: 20px 20px 0; display: flex; flex-direction: column; gap: 0; text-transform: uppercase; --body-gap: 14px; height: 100%; box-sizing: border-box; }
+.wrap :global(.k-body) { flex: 1; }
+.wrap :global(.k-body-inner) { flex: 1; height: unset; }
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bigNum { font-family: var(--font-title); font-weight: 800; font-size: 22px; line-height: 1.15; min-height: 1.4em; transition: all 0.2s; }
+.chainMeta { font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; white-space: nowrap; }
+
+/* Desktop donut */
+.desktop { display: flex; flex: 1; align-items: center; }
+.mobile  { display: none; }
+
+.donutWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px;
+}
+.donut {
+  width: clamp(150px, 45vw, 220px);
+  height: clamp(150px, 45vw, 220px);
+}
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  max-width: 65%;
+}
+.legRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background 0.15s;
+}
+.legOn  { background: rgba(var(--accent3-rgb),.14); }
+.legOff { opacity: 0.4; }
+.swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+}
+.legLabel { color: var(--fg); font-weight: 700; }
+.legPct   { color: var(--muted); font-size: 10px; }
+
+/* Mobile bar */
+.mobileLegend { display: flex; gap: 12px; flex-wrap: wrap; }
+.mobileLegRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.mobileBar {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  background: rgba(255,255,255,.08);
+}
+.mobileBarSeg { height: 100%; transition: width 0.5s ease, opacity 0.2s ease, transform 0.2s ease; transform-origin: center; }
+
+@media (max-width: 640px) {
+  .desktop { display: none; }
+  .mobile  { display: flex; flex-direction: column; gap: 10px; }
+}

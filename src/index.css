@@ -1,0 +1,297 @@
+/* ============================================================
+   KENDU DASHBOARD — Global Tokens & Base Styles
+   All CSS variables live here exactly once.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Moki';
+  src: url('/fonts/Moki-Mono.otf') format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Asap Condensed';
+  src: url('/fonts/AsapCondensed-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---- Kendu official palette ---- */
+  --kendu-coral:      #F05C4E;  /* primary brand coral */
+  --kendu-dark:       #201E1F;  /* near-black background */
+  --kendu-light:      #E8E6EE;  /* off-white foreground */
+  --kendu-red-dark:   #B63733;  /* deep red */
+  --kendu-red-mid:    #D06152;  /* medium red */
+  --kendu-orange:     #D9804A;  /* warm orange-brown */
+  --kendu-gold:       #DFA45F;  /* golden */
+  --kendu-cream:      #F1F1C6;  /* pale yellow-cream */
+  --kendu-white:      #FFFFFF;
+
+  /* ---- Accent RGB components (for rgba() usage) ---- */
+  --accent-rgb:  240, 92, 78;   /* #F05C4E coral  — data fills        */
+  --accent2-rgb: 217, 128, 74;  /* #D9804A orange — interactive chrome */
+  --accent3-rgb: 223, 164, 95;  /* #DFA45F gold   — secondary labels   */
+
+  /* ---- Functional tokens (mapped from palette) ---- */
+  --bg:           var(--kendu-dark);
+  --fg:           var(--kendu-light);
+  --muted:        #9E9399;
+  --accent:       var(--kendu-coral);   /* primary data fill */
+  --accent2:      var(--kendu-orange);  /* interactive chrome */
+  --accent3:      var(--kendu-gold);    /* secondary labels   */
+  --accent-dark:  var(--kendu-red-mid);
+  --card:         #2B2829;
+  --surface-2:    rgba(255, 255, 255, 0.05);
+  --surface-3:    rgba(255, 255, 255, 0.12);
+  --positive:     #24c65b;
+  --negative:     var(--kendu-red-dark);
+  --alt-neutral:  #a78bfa;
+  --grid:         #5A5A5A;
+
+  /* Segment colors (chain composition) */
+  --seg-eth:  var(--kendu-orange);
+  --seg-sol:  var(--kendu-red-mid);
+  --seg-base: var(--kendu-gold);
+
+  /* Icon stroke */
+  --icon-stroke: 2;
+
+  /* Ring thickness */
+  --ring-w: 12;
+
+  /* Typography */
+  --font: 'Asap Condensed', system-ui, -apple-system, sans-serif;
+  --font-title: 'Moki', monospace;
+}
+
+/* ---- Reset ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(var(--accent3-rgb),.3); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--accent3-rgb),.55); }
+
+/* ---- Shared card shell ---- */
+.k-card {
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* ---- Shared button ---- */
+.k-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent2);
+  color: #fff;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.k-btn:hover  { background: var(--accent); }
+.k-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ---- Icon refresh button (outline style) ---- */
+.k-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--accent2-rgb), .45);
+  background: transparent;
+  color: var(--accent2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.k-btn-icon:hover    { background: rgba(var(--accent2-rgb), .12); border-color: var(--accent2); }
+.k-btn-icon:disabled { opacity: 0.5; cursor: default; }
+.k-btn-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  overflow: visible;
+}
+.k-btn-icon svg * {
+  vector-effect: non-scaling-stroke;
+  stroke-width: var(--icon-stroke);
+}
+
+/* ---- Chip / toggle pill ---- */
+.k-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), 0.4);
+  background: var(--card);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.k-chip:hover           { border-color: var(--accent2); }
+.k-chip.active          { background: var(--accent); color: #fff; border-color: var(--accent-dark); font-weight: 700; }
+
+/* ---- Eyebrow label ---- */
+.k-eyebrow {
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* ---- Big stat number ---- */
+.k-big {
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* ---- Spin animation ---- */
+@keyframes spin360 {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin360 0.9s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* ---- SR-only utility ---- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Footer timestamp ---- */
+.k-foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---- Positive / negative color helpers ---- */
+.pos { color: var(--positive); }
+.neg { color: var(--negative); }
+
+/* ---- Card collapse animation ---- */
+.k-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.32s cubic-bezier(.4,0,.2,1), opacity 0.22s ease;
+}
+.k-body.k-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+/*
+  k-body-inner is the scrollable content area.
+  padding-top creates the gap between the card header and content.
+  Setting it as a flex column means each card's body sections are
+  spaced by --body-gap (set per card via CSS custom property).
+*/
+.k-body-inner {
+  overflow: hidden;
+  padding-top: 12px;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--body-gap, 14px);
+}
+
+/* ---- Card header actions row ---- */
+.k-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}

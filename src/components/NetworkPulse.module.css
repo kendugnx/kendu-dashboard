@@ -1,0 +1,201 @@
+.wrap { padding: 20px 20px 0; text-transform: uppercase; gap: 0; }
+
+/* ---- Desktop / Mobile toggle ---- */
+.desktop { display: flex; flex-direction: column; gap: 14px; }
+.mobile  { display: none; flex-direction: column; gap: 14px; }
+
+/* ---- Card head ---- */
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.titleBlock { display: flex; flex-direction: column; gap: 3px; }
+.title { font-family: var(--font-title); font-weight: 700; font-size: 20px; letter-spacing: 0.12em; }
+.actions { display: flex; align-items: center; gap: 10px; }
+
+/* ---- Live pill ---- */
+.livePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.live    { background: rgba(36,198,91,.18); color: #24c65b; }
+.polling { background: var(--surface-2); color: var(--muted); }
+
+/* ---- Desktop body (3-column) ---- */
+.desktopBody {
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+}
+
+/* ---- Ring meter ---- */
+.miniMeter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  position: relative;
+  flex-shrink: 0;
+}
+.ring {
+  width: 112px;
+  height: 112px;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.track {
+  fill: none;
+  stroke: rgba(var(--accent2-rgb),.25);
+  stroke-width: 12;
+}
+.bar {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 502.655;
+  stroke-dashoffset: 502.655;
+  transition: stroke-dashoffset 0.4s ease;
+}
+.meterCaption {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.meterVal   { font-size: 26px; font-weight: 800; color: var(--fg); line-height: 1; }
+.meterLabel { font-size: 9px; letter-spacing: 0.08em; font-weight: 600; color: var(--muted); line-height: 1.3; text-align: center; }
+
+/* ---- Price block ---- */
+.priceBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.bigPrice {
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-family: var(--font-title);
+}
+.priceChange {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.periodLabel { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
+.gasTiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+}
+.gasTier {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  text-align: center;
+}
+.gasLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.gasVal   { font-size: 13px; font-weight: 700; }
+.gasUnit  { font-size: 10px; font-weight: 600; color: var(--muted); }
+.gasEta   { font-size: 11px; color: var(--muted); }
+
+/* ---- Meter color states ---- */
+.bearish    { --bar-color: var(--negative); }
+.neutral    { --bar-color: #f0ad00; }
+.bullish    { --bar-color: var(--positive); }
+.btcSeason  { --bar-color: #3b82f6; }
+.altNeutral { --bar-color: var(--alt-neutral); }
+.altSeason  { --bar-color: #f97316; }
+
+.bearish .bar, .neutral .bar, .bullish .bar,
+.btcSeason .bar, .altNeutral .bar, .altSeason .bar {
+  stroke: var(--bar-color);
+}
+
+/* ---- Mobile layout ---- */
+.mobilePriceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mobileBig    { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+.mobileChange { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+.mobileGasTiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.mobileGasItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  text-align: center;
+}
+.mobileGasItem strong { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+
+.mobileMeters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.mobileMeter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.04);
+}
+.mobileLabel    { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--accent3); }
+.mobileMeterVal { font-size: 22px; font-weight: 800; color: var(--fg); }
+.mobileProgress {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  background: rgba(var(--accent2-rgb),.25);
+}
+.mobileProgressBar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+/* ---- Responsive breakpoint ---- */
+@media (max-width: 720px) {
+  .desktop { display: none; }
+  .mobile  { display: flex; }
+}

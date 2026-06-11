@@ -1,0 +1,71 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 28px 20px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo {
+  height: clamp(32px, 5vw, 52px);
+  width: auto;
+  display: block;
+  mix-blend-mode: screen;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 20px 12px;
+  gap: 4px;
+}
+
+.footerMask {
+  width: clamp(80px, 12vw, 120px);
+  height: auto;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+.footerLabel {
+  font-family: 'Moki', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.main {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fullRow {
+  width: 100%;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 640px) {
+  .header { padding: 20px 16px 12px; }
+  .main   { padding: 0 12px 32px; gap: 12px; }
+  .twoCol { grid-template-columns: 1fr; gap: 12px; }
+}
