@@ -1,5 +1,4 @@
 // api/telegram.js — Telegram bot webhook handler
-import sharp from 'sharp'
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
 const SUPPLY = 996.74e9
@@ -187,6 +186,7 @@ async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
     fetch('https://kendu-dashboard.com/chartbackground.jpg').then(r => r.arrayBuffer()).then(Buffer.from),
   ])
 
+  const { default: sharp } = await import('sharp')
   return sharp(bgBuf)
     .composite([{ input: chartBuf, gravity: 'center' }])
     .jpeg({ quality: 90 })
