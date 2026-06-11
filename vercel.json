@@ -1,5 +1,5 @@
 {
-  "rewrites": [{ "source": "/((?!assets|fonts|api|public).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.png|.*\\.svg|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",
