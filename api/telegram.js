@@ -1,5 +1,6 @@
 // api/telegram.js — Telegram bot webhook handler
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
+console.log('TOKEN loaded:', !!TOKEN)
 
 async function sendMessage(chatId, text) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
