@@ -126,7 +126,17 @@ async function fetchHoldersCSV() {
   return rows.sort((a, b) => a.date - b.date)
 }
 
+const RANGE_TITLES = {
+  'ALL TIME': 'KENDU HOLDERS - ALL TIME',
+  '1Y': 'KENDU HOLDERS - 1 YEAR',
+  '6M': 'KENDU HOLDERS - 6 MONTHS',
+  '1M': 'KENDU HOLDERS - 1 MONTH',
+  '1W': 'KENDU HOLDERS - 1 WEEK',
+  '3D': 'KENDU HOLDERS - 3 DAYS',
+}
+
 function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
+  const title = RANGE_TITLES[rangeLabel] ?? `KENDU HOLDERS - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
 
@@ -152,7 +162,7 @@ function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
       legend: { display: false },
       title: {
         display: true,
-        text: rangeLabel,
+        text: title,
         fontColor: '#FF6B4A',
         fontSize: 14,
         fontStyle: 'bold',
@@ -172,7 +182,9 @@ function buildChartUrl(rows, _unused = null, rangeLabel = 'ALL TIME') {
   }
 
   const encoded = encodeURIComponent(JSON.stringify(config))
-  return `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
+  const chartUrl = `https://quickchart.io/chart?c=${encoded}&w=600&h=320&bkg=%23201E1F&v=2`
+  const maskUrl  = encodeURIComponent('https://kendu-dashboard.com/kendu-mask.png')
+  return `https://quickchart.io/watermark?mainImageUrl=${encodeURIComponent(chartUrl)}&markImageUrl=${maskUrl}&markRatio=0.35&markAlpha=0.08&horizontal=center&vertical=center`
 }
 
 export default async function handler(req, res) {
