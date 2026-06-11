@@ -331,11 +331,7 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/seejoshnudes')) {
       const mp4 = await fetch('https://kendu-dashboard.com/modern-family.mp4')
-      const buf = await mp4.arrayBuffer()
-      const form = new FormData()
-      form.append('chat_id', String(chatId))
-      form.append('animation', new Blob([buf], { type: 'video/mp4' }), 'modern-family.mp4')
-      await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, { method: 'POST', body: form })
+      await sendMessage(chatId, `TYPE: ${mp4.headers.get('content-type')} SIZE: ${mp4.headers.get('content-length')}`)
 
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
