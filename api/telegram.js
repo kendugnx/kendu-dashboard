@@ -24,7 +24,7 @@ const TIERS = [
   { name: 'Megalodon',     min: 1.6e9,  max: 2.3e9 },
   { name: 'Gyrados',       min: 2.3e9,  max: 3.5e9 },
   { name: 'Godwhale',      min: 3.5e9,  max: 4.5e9 },
-  { name: 'Kendu Eternal', min: 4.5e9,  max: Infinity },
+  { name: 'Eternal',       min: 4.5e9,  max: Infinity },
 ]
 
 function tierFor(tokens) {
@@ -182,15 +182,6 @@ export default async function handler(req, res) {
           lines.push(`<b>Target MC:</b> ${fmt(targetMC)}`)
           lines.push(`<b>Value @ Target:</b> ${fmt(targetValue)}`)
           lines.push(`<b>Multiplier:</b> ${multiplier.toFixed(2)}x`)
-        }
-
-        // Tier values at current MC
-        lines.push(``)
-        lines.push(`<b>Tier values @ current MC:</b>`)
-        const nearbyTiers = TIERS.filter(t => t.max !== Infinity).slice(0, 8)
-        for (const t of nearbyTiers) {
-          const val = t.min * pricePerToken
-          lines.push(`${t.name}: ${fmt(t.min / 1e6)}M → ${fmt(val)}`)
         }
 
         await sendMessage(chatId, lines.join('\n'))
