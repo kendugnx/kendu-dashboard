@@ -15,7 +15,7 @@ function pickBestPair(pairs) {
   return arr[0]
 }
 
-const RANGES = ['All', '1Y', '6M', '1M', '7D']
+const RANGES = ['All', '1Y', '6M', '1M', '1W', '3D']
 const MA_OPTS = [9, 26, 50, 200]
 
 function parseCustomRange(str) {
@@ -100,7 +100,7 @@ function filterByDays(rows, days) {
 
 function filterByRange(rows, range) {
   if (range === 'All' || !rows.length) return rows
-  const days = { '1Y': 365, '6M': 182, '3M': 91, '1M': 30, '7D': 7, '3D': 3 }[range]
+  const days = { '1Y': 365, '6M': 182, '3M': 91, '1M': 30, '1W': 7, '7D': 7, '3D': 3 }[range]
   return filterByDays(rows, days)
 }
 

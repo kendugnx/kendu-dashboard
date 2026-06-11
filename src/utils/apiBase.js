@@ -13,7 +13,7 @@ export const API = {
   treasury:    ()       => `/api/treasury`,
 
   // Direct external URLs -- routed through Vite proxy locally, direct on Vercel server
-  coingecko:  (path) => IS_DEV ? `/proxy/coingecko${path}` : `/api/coingecko${path}`,
+  coingecko:  (path) => IS_DEV ? `/proxy/coingecko${path}` : `/api/coingecko?path=${encodeURIComponent(path)}`,
   ethplorer:  (path) => IS_DEV ? `/proxy/ethplorer${path}` : `https://api.ethplorer.io${path}`,
   fng:        (path) => IS_DEV ? `/proxy/fng${path}`       : `https://api.alternative.me${path}`,
   ethrpc:     ()     => IS_DEV ? `/proxy/ethrpc`           : `https://rpc.ankr.com/eth`,

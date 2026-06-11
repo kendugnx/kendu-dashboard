@@ -1,6 +1,7 @@
 // api/coingecko.js — server-side proxy to avoid browser rate limits on CoinGecko free tier
 export default async function handler(req, res) {
-  const path = req.url.replace(/^\/api\/coingecko/, '')
+  const qs   = new URL(req.url, 'http://localhost').searchParams
+  const path = qs.get('path') || req.url.replace(/^\/api\/coingecko/, '')
   const url  = `https://api.coingecko.com/api/v3${path}`
 
   try {
