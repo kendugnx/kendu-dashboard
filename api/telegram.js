@@ -322,7 +322,7 @@ export default async function handler(req, res) {
       })
     }
   } catch (e) {
-    await sendMessage(chatId, 'ERROR FETCHING DATA. TRY AGAIN IN A MOMENT.')
+    await sendMessage(chatId, `ERROR: ${e.message}`)
   }
 
   res.status(200).send('OK')
