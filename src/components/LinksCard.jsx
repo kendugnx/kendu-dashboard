@@ -3,18 +3,17 @@ import CollapseButton from './CollapseButton.jsx'
 import styles from './LinksCard.module.css'
 
 const LINKS = [
-  { label: 'Website',       url: 'https://kendu.io',                          desc: 'Official Kendu website' },
-  { label: 'Twitter / X',   url: 'https://x.com/KenduInu',                    desc: 'Official X account' },
-  { label: 'Telegram',      url: 'https://t.me/KenduInu',                     desc: 'Community Telegram' },
-  { label: 'Dexscreener',   url: 'https://dexscreener.com/ethereum/0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f', desc: 'ETH pair chart' },
-  { label: 'Etherscan',     url: 'https://etherscan.io/token/0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18', desc: 'ETH contract' },
-  { label: 'Solscan',       url: 'https://solscan.io',                        desc: 'SOL contract' },
-  { label: 'Basescan',      url: 'https://basescan.org',                      desc: 'BASE contract' },
-  { label: 'Uniswap',       url: 'https://app.uniswap.org',                   desc: 'Trade on Uniswap' },
-  { label: 'Conviction',    url: 'https://kenduconviction.com',                desc: 'Kendu Conviction' },
-  { label: 'Spice',         url: 'https://kenduspice.com',                     desc: 'Kendu Spice' },
-  { label: 'Energy',        url: 'https://kenduenergy.com',                    desc: 'Kendu Energy' },
-  { label: 'Kendu Surprise',url: 'https://www.youtube.com/watch?v=a7Lq6ZlSqys', desc: '👀 👀 👀 👀' },
+  { label: 'Website',     url: 'https://kendu.io',                          desc: 'Official Kendu website' },
+  { label: 'Twitter / X', url: 'https://x.com/KenduInu',                    desc: 'Official X account' },
+  { label: 'Telegram',    url: 'https://t.me/KenduInu',                     desc: 'Community Telegram' },
+  { label: 'Dexscreener', url: 'https://dexscreener.com/ethereum/0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f', desc: 'ETH pair chart' },
+  { label: 'Etherscan',   url: 'https://etherscan.io/token/0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18', desc: 'ETH contract' },
+  { label: 'Solscan',     url: 'https://solscan.io',                        desc: 'SOL contract' },
+  { label: 'Basescan',    url: 'https://basescan.org',                      desc: 'BASE contract' },
+  { label: 'Uniswap',     url: 'https://app.uniswap.org',                   desc: 'Trade on Uniswap' },
+  { label: 'Conviction',  url: 'https://kenduconviction.com',                desc: 'Kendu Conviction' },
+  { label: 'Spice',       url: 'https://kenduspice.com',                     desc: 'Kendu Spice' },
+  { label: 'Energy',      url: 'https://kenduenergy.com',                    desc: 'Kendu Energy' },
 ]
 
 export default function LinksCard({ collapsed, onToggle }) {
@@ -45,6 +44,17 @@ export default function LinksCard({ collapsed, onToggle }) {
               <span className={styles.linkArrow}>↗</span>
             </a>
           ))}
+        </div>
+
+        <div className={styles.surpriseWrap}>
+          <div className={styles.surpriseLabel}>Kendu Surprise 👀</div>
+          <video
+            className={styles.surpriseVideo}
+            src="/kendu-surprise.mp4"
+            controls
+            playsInline
+            preload="metadata"
+          />
         </div>
       </div></div>
     </div>

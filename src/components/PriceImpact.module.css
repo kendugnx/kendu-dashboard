@@ -252,14 +252,16 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 720px) {
-  .poolRow   { grid-template-columns: repeat(3, 1fr); }
-  .resultGrid { grid-template-columns: repeat(2, 1fr); }
+  .poolRow    { grid-template-columns: repeat(3, 1fr); }
+  .resultGrid { grid-template-columns: repeat(3, 1fr); }
   .equivGrid  { grid-template-columns: repeat(3, 1fr); }
   .inputRow   { flex-direction: column; align-items: stretch; }
   .input      { width: 100%; }
+  .resultVal  { font-size: 14px; }
+  .equivVal   { font-size: 13px; }
 }
 
 @media (max-width: 420px) {
-  .resultGrid { grid-template-columns: 1fr; }
-  .equivGrid  { grid-template-columns: 1fr; }
+  .resultVal  { font-size: 13px; }
+  .equivVal   { font-size: 12px; }
 }

@@ -113,6 +113,8 @@
 @media (max-width: 640px) {
   .controls { gap: 6px; }
   .rightChips { display: none; }
+  .rangeChips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .rangeChips::-webkit-scrollbar { display: none; }
   .statsRow { gap: 6px; }
   .statPill { font-size: 11px; padding: 6px 10px; }
 }

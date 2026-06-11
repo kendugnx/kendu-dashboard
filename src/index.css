@@ -237,6 +237,11 @@ body {
   transform-origin: 50% 50%;
 }
 
+/* ---- Prevent iOS zoom on input focus ---- */
+@media (max-width: 768px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
 /* ---- SR-only utility ---- */
 .sr-only {
   position: absolute;
