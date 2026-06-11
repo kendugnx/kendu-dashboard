@@ -200,6 +200,7 @@ export default async function handler(req, res) {
         `/mcap — KENDU MARKET CAP\n` +
         `/holders — HOLDER COUNT & CHART\n` +
         `/calc — CALCULATE HOLDINGS VALUE\n` +
+        `/gains — GAINS CALCULATOR\n` +
         `/dashboard — OPEN THE DASHBOARD`
       )
 
@@ -292,6 +293,36 @@ export default async function handler(req, res) {
         }
 
         await sendMessage(chatId, lines.join('\n'))
+      }
+
+    } else if (text.startsWith('/gains')) {
+      const parts = text.split(/\s+/).slice(1)
+      const invested = parseFloat(parts[0]?.replace(/[$,]/g, ''))
+      const buyMC    = parseMC(parts[1])
+
+      if (!invested || !buyMC) {
+        await sendMessage(chatId,
+          `<b>USAGE:</b> /gains [AMOUNT] [BUY MC]\n` +
+          `E.G. /gains 500 2M\n` +
+          `E.G. /gains 1000 500K`
+        )
+      } else {
+        const currentMC  = await getMCap()
+        const multiplier = currentMC / buyMC
+        const value      = invested * multiplier
+        const pnl        = value - invested
+        const pnlSign    = pnl >= 0 ? '+' : ''
+        const fmtUSD     = n => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+        await sendMessage(chatId,
+          `<b>GAINS CALCULATOR</b>\n\n` +
+          `<b>INVESTED:</b> ${fmtUSD(invested)}\n` +
+          `<b>BUY MC:</b> ${fmt(buyMC)}\n` +
+          `<b>CURRENT MC:</b> ${fmt(currentMC)}\n\n` +
+          `<b>MULTIPLIER:</b> ${multiplier.toFixed(2)}X\n` +
+          `<b>CURRENT VALUE:</b> ${fmtUSD(value)}\n` +
+          `<b>PNL:</b> ${pnlSign}${fmtUSD(pnl)}`
+        )
       }
 
     } else if (text.startsWith('/dashboard')) {
