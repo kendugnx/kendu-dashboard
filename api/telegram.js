@@ -127,7 +127,8 @@ async function fetchHoldersCSV() {
 }
 
 function buildChartUrl(rows, days = null) {
-  const filtered = days ? rows.filter(r => r.date >= new Date(Date.now() - days * 86400000)) : rows
+  const cutoff = days ? Date.now() - days * 86400000 : null
+  const filtered = cutoff ? rows.filter(r => r.date.getTime() >= cutoff) : rows
   // Downsample to ~60 points max to keep URL short
   const step = Math.max(1, Math.floor(filtered.length / 60))
   const sampled = filtered.filter((_, i) => i % step === 0 || i === filtered.length - 1)
@@ -140,6 +141,7 @@ function buildChartUrl(rows, days = null) {
     data: {
       labels,
       datasets: [{
+        label: '',
         data,
         borderColor: '#F05C4E',
         backgroundColor: 'rgba(240,92,78,0.08)',
@@ -210,7 +212,7 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
-      const rangeDays = { '1y': 365, '6m': 182, '1m': 30, '1w': 7, '3d': 3 }[parts[0]] ?? null
+      const rangeDays = { '1y': 365, '6m': 182, '1m': 30, '1w': 7, '7d': 7, '3d': 3 }[parts[0]] ?? null
 
       const rows = await fetchHoldersCSV()
       if (!rows.length) { await sendMessage(chatId, 'ERROR LOADING HOLDER DATA.'); return res.status(200).send('OK') }
