@@ -329,6 +329,26 @@ export default async function handler(req, res) {
         )
       }
 
+    } else if (text.startsWith('/why')) {
+      await sendMessage(chatId, 'BECAUSE FUCK YOU, THATS WHY.')
+
+    } else if (text.startsWith('/wen')) {
+      const parts = text.split(/\s+/).slice(1)
+      const targetMC = parseMC(parts[0])
+      const hasSuffix = /[kmbt]$/i.test(parts[0] || '')
+
+      if (parts[0] && (!targetMC || !hasSuffix)) {
+        await sendMessage(chatId, 'EVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY')
+      } else if (!parts[0]) {
+        await sendMessage(chatId, 'EVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY')
+      } else {
+        const currentMC  = await getMCap()
+        const multiplier = targetMC / currentMC
+        await sendMessage(chatId,
+          `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}\nEVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY`
+        )
+      }
+
     } else if (text.startsWith('/wafe')) {
       await sendMessage(chatId, 'THE KENDU WAFE STARTS WITH SMALL VOLUME INCREASES')
 
