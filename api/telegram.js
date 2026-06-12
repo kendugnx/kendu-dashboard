@@ -338,14 +338,14 @@ export default async function handler(req, res) {
       const hasSuffix = /[kmbt]$/i.test(parts[0] || '')
 
       if (parts[0] && (!targetMC || !hasSuffix)) {
-        await sendMessage(chatId, 'EVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY')
+        await sendMessage(chatId, 'EVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY')
       } else if (!parts[0]) {
-        await sendMessage(chatId, 'EVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY')
+        await sendMessage(chatId, 'EVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY')
       } else {
         const currentMC  = await getMCap()
         const multiplier = targetMC / currentMC
         await sendMessage(chatId,
-          `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}\nEVERYONE ASKS WHEN, BUT NOBODY ASKS /WHY`
+          `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}\nEVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY`
         )
       }
 
