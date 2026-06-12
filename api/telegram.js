@@ -344,9 +344,7 @@ export default async function handler(req, res) {
       } else {
         const currentMC  = await getMCap()
         const multiplier = targetMC / currentMC
-        await sendMessage(chatId,
-          `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}\nEVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY`
-        )
+        await sendMessage(chatId, `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}`)
       }
 
     } else if (text.startsWith('/wafe')) {
