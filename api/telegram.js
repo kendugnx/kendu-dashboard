@@ -360,7 +360,7 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/false')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/FALSE.jpg', '')
     } else if (text.startsWith('/ctoshi')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/ctoshi.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/ctoshi.jpg', '@C_toshi')
 
     } else if (text.startsWith('/sofinished')) {
       await sendMessage(chatId, 'soSmart')
