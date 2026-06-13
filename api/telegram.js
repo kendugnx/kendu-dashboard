@@ -348,17 +348,17 @@ export default async function handler(req, res) {
       }
 
     } else if (text.startsWith('/approve')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/approved.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/APPROVED.jpg', '')
     } else if (text.startsWith('/certify')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/certified.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/CERTIFIED.jpg', '')
     } else if (text.startsWith('/true')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/true.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/TRUE.jpg', '')
     } else if (text.startsWith('/maybe')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/maybe.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/MAYBE.jpg', '')
     } else if (text.startsWith('/deny')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/denied.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/DENIED.jpg', '')
     } else if (text.startsWith('/false')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/false.jpg', '')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/FALSE.jpg', '')
 
     } else if (text.startsWith('/sofinished')) {
       await sendMessage(chatId, 'soSmart')
