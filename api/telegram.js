@@ -347,6 +347,19 @@ export default async function handler(req, res) {
         await sendMessage(chatId, `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}`)
       }
 
+    } else if (text.startsWith('/approve')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/approved.jpg', '')
+    } else if (text.startsWith('/certify')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/certified.jpg', '')
+    } else if (text.startsWith('/true')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/true.jpg', '')
+    } else if (text.startsWith('/maybe')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/maybe.jpg', '')
+    } else if (text.startsWith('/deny')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/denied.jpg', '')
+    } else if (text.startsWith('/false')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/false.jpg', '')
+
     } else if (text.startsWith('/sofinished')) {
       await sendMessage(chatId, 'soSmart')
 
