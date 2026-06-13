@@ -128,19 +128,19 @@ async function fetchHoldersCSV() {
 }
 
 function parseRange(str) {
-  if (!str) return [null, 'ALL TIME']
+  if (!str) return [null, 'All Time']
   const m = str.match(/^(\d+)(d|w|m|y)$/i)
-  if (!m) return [null, 'ALL TIME']
+  if (!m) return [null, 'All Time']
   const n = parseInt(m[1])
   const unit = m[2].toLowerCase()
   const days = n * { d: 1, w: 7, m: 30, y: 365 }[unit]
-  const names = { d: ['DAY','DAYS'], w: ['WEEK','WEEKS'], m: ['MONTH','MONTHS'], y: ['YEAR','YEARS'] }
+  const names = { d: ['Day','Days'], w: ['Week','Weeks'], m: ['Month','Months'], y: ['Year','Years'] }
   const [sing, plur] = names[unit]
   return [days, `${n} ${n === 1 ? sing : plur}`]
 }
 
-async function buildChartUrl(rows, rangeLabel = 'ALL TIME') {
-  const title   = `KENDU HOLDERS - ${rangeLabel}`
+async function buildChartUrl(rows, rangeLabel = 'All Time') {
+  const title   = `Kendu Holders - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
   const labels  = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
@@ -195,38 +195,39 @@ export default async function handler(req, res) {
   try {
     if (text.startsWith('/start') || text.startsWith('/help')) {
       await sendMessage(chatId,
-        `<b>KENDU DASHBOARD BOT</b>\n\n` +
-        `COMMANDS:\n` +
-        `/price — ETH PRICE & KENDU MC\n` +
-        `/mcap — KENDU MARKET CAP\n` +
-        `/holders — HOLDER COUNT & CHART\n` +
-        `/calc — CALCULATE HOLDINGS VALUE\n` +
-        `/gains — GAINS CALCULATOR\n` +
-        `/dashboard — OPEN THE DASHBOARD`
+        `<b>Kendu Dashboard Bot</b>\n\n` +
+        `Commands:\n` +
+        `/price — ETH price & Kendu MC\n` +
+        `/mcap — Kendu market cap\n` +
+        `/holders — Holder count & chart\n` +
+        `/calc — Calculate holdings value\n` +
+        `/gains — Gains calculator\n` +
+        `/wen — Wen?\n` +
+        `/dashboard — Open the dashboard`
       )
 
     } else if (text.startsWith('/price')) {
       const { ethPrice, ethChange, kenduChange } = await getPrice()
       const mc = await getMCap()
-      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24H)`
+      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24h)`
       const ethStr = ethPrice != null ? `$${ethPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
       await sendMessage(chatId,
-        `<b>ETH PRICE</b>\n${ethStr}${fmtChange(ethChange)}\n\n` +
-        `<b>KENDU MARKET CAP</b>\n${fmt(mc)}${fmtChange(kenduChange)}`
+        `<b>ETH Price</b>\n${ethStr}${fmtChange(ethChange)}\n\n` +
+        `<b>Kendu Market Cap</b>\n${fmt(mc)}${fmtChange(kenduChange)}`
       )
 
     } else if (text.startsWith('/mcap')) {
       const { kenduChange } = await getPrice()
       const mc = await getMCap()
-      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24H)`
-      await sendMessage(chatId, `<b>KENDU MARKET CAP</b>\n${fmt(mc)}${fmtChange(kenduChange)}`)
+      const fmtChange = c => c == null ? '' : ` ${c > 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}% (24h)`
+      await sendMessage(chatId, `<b>Kendu Market Cap</b>\n${fmt(mc)}${fmtChange(kenduChange)}`)
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
       const [rangeDays, rangeLabel] = parseRange(parts[0])
 
       const rows = await fetchHoldersCSV()
-      if (!rows.length) { await sendMessage(chatId, 'ERROR LOADING HOLDER DATA.'); return res.status(200).send('OK') }
+      if (!rows.length) { await sendMessage(chatId, 'Error loading holder data.'); return res.status(200).send('OK') }
 
       const latest = rows[rows.length - 1]
       const cutoff = rangeDays ? Date.now() - rangeDays * 86400000 : null
@@ -243,14 +244,14 @@ export default async function handler(req, res) {
       const deltaLine = rangeDays == null ? '' :
         `\nΔ ${rangeLabel}: ${sign(dTotal)}` +
         (dEth  != null ? `  ETH ${sign(dEth)}`  : '') +
-        (dBase != null && dBase !== 0 ? `  BASE ${sign(dBase)}` : '') +
-        (dSol  != null && dSol  !== 0 ? `  SOL ${sign(dSol)}`  : '')
+        (dBase != null && dBase !== 0 ? `  Base ${sign(dBase)}` : '') +
+        (dSol  != null && dSol  !== 0 ? `  Sol ${sign(dSol)}`  : '')
 
       const caption =
-        `<b>TOTAL HOLDERS: ${latest.total.toLocaleString()}</b>\n` +
+        `<b>Total Holders: ${latest.total.toLocaleString()}</b>\n` +
         `ETH: ${isFinite(latest.eth) ? latest.eth.toLocaleString() : '—'}  ` +
-        `BASE: ${isFinite(latest.base) && latest.base > 0 ? latest.base.toLocaleString() : '—'}  ` +
-        `SOL: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
+        `Base: ${isFinite(latest.base) && latest.base > 0 ? latest.base.toLocaleString() : '—'}  ` +
+        `Sol: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
         deltaLine
 
       const chartUrl = await buildChartUrl(rangeRows, rangeLabel)
@@ -269,7 +270,7 @@ export default async function handler(req, res) {
 
       if (!tokens) {
         await sendMessage(chatId,
-          `<b>USAGE:</b>\n/calc [TOKEN AMOUNT] — E.G. /calc 500M\n/calc [TOKEN AMOUNT] [TARGET MC] — E.G. /calc 500M 1B\n/calc [TIER] — E.G. /calc whale`
+          `<b>Usage:</b>\n/calc [token amount] — e.g. /calc 500M\n/calc [token amount] [target MC] — e.g. /calc 500M 1B\n/calc [tier] — e.g. /calc whale`
         )
       } else {
         const mc = await getMCap()
@@ -278,19 +279,19 @@ export default async function handler(req, res) {
         const currentTier   = tierFor(tokens)
 
         const lines = [
-          `<b>HOLDING:</b> ${tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : (tokens / 1e6).toFixed(2) + 'M'} TOKENS`,
-          `<b>CURRENT MC:</b> ${fmt(mc)}`,
-          `<b>CURRENT VALUE:</b> ${fmt(currentValue)}`,
-          `<b>TIER:</b> ${currentTier?.name?.toUpperCase() ?? '—'}`,
+          `<b>Holding:</b> ${tokens >= 1e9 ? (tokens / 1e9).toFixed(2) + 'B' : (tokens / 1e6).toFixed(2) + 'M'} tokens`,
+          `<b>Current MC:</b> ${fmt(mc)}`,
+          `<b>Current value:</b> ${fmt(currentValue)}`,
+          `<b>Tier:</b> ${currentTier?.name ?? '—'}`,
         ]
 
         if (targetMC) {
           const targetValue = tokens * (targetMC / SUPPLY)
           const multiplier  = targetValue / currentValue
           lines.push(``)
-          lines.push(`<b>TARGET MC:</b> ${fmt(targetMC)}`)
-          lines.push(`<b>VALUE @ TARGET:</b> ${fmt(targetValue)}`)
-          lines.push(`<b>MULTIPLIER:</b> ${multiplier.toFixed(2)}X`)
+          lines.push(`<b>Target MC:</b> ${fmt(targetMC)}`)
+          lines.push(`<b>Value @ target:</b> ${fmt(targetValue)}`)
+          lines.push(`<b>Multiplier:</b> ${multiplier.toFixed(2)}x`)
         }
 
         await sendMessage(chatId, lines.join('\n'))
@@ -305,10 +306,10 @@ export default async function handler(req, res) {
 
       if (!invested || !buyMC || !hasSuffix) {
         await sendMessage(chatId,
-          `<b>USAGE:</b> /gains [DOLLAR AMOUNT] [BUY MC]\n` +
-          `E.G. /gains 500 2.5M\n` +
-          `E.G. /gains 1K 500K\n\n` +
-          `BOTH VALUES MUST INCLUDE A UNIT (K, M, B)`
+          `<b>Usage:</b> /gains [dollar amount] [buy MC]\n` +
+          `E.g. /gains 500 2.5M\n` +
+          `E.g. /gains 1K 500K\n\n` +
+          `Both values must include a unit (K, M, B)`
         )
       } else {
         const currentMC  = await getMCap()
@@ -319,32 +320,30 @@ export default async function handler(req, res) {
         const fmtUSD     = n => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
         await sendMessage(chatId,
-          `<b>GAINS CALCULATOR</b>\n\n` +
-          `<b>INVESTED:</b> ${fmtUSD(invested)}\n` +
-          `<b>BUY MC:</b> ${fmt(buyMC)}\n` +
-          `<b>CURRENT MC:</b> ${fmt(currentMC)}\n\n` +
-          `<b>MULTIPLIER:</b> ${multiplier.toFixed(2)}X (${pnlSign}${((multiplier - 1) * 100).toFixed(0)}%)\n` +
-          `<b>CURRENT VALUE:</b> ${fmtUSD(value)}\n` +
+          `<b>Gains Calculator</b>\n\n` +
+          `<b>Invested:</b> ${fmtUSD(invested)}\n` +
+          `<b>Buy MC:</b> ${fmt(buyMC)}\n` +
+          `<b>Current MC:</b> ${fmt(currentMC)}\n\n` +
+          `<b>Multiplier:</b> ${multiplier.toFixed(2)}x (${pnlSign}${((multiplier - 1) * 100).toFixed(0)}%)\n` +
+          `<b>Current value:</b> ${fmtUSD(value)}\n` +
           `<b>PNL:</b> ${pnlSign}${fmtUSD(pnl)}`
         )
       }
 
     } else if (text.startsWith('/why')) {
-      await sendMessage(chatId, 'BECAUSE FUCK YOU, THATS WHY.')
+      await sendMessage(chatId, 'Because fuck you, that\'s why.')
 
     } else if (text.startsWith('/wen')) {
       const parts = text.split(/\s+/).slice(1)
       const targetMC = parseMC(parts[0])
       const hasSuffix = /[kmbt]$/i.test(parts[0] || '')
 
-      if (parts[0] && (!targetMC || !hasSuffix)) {
-        await sendMessage(chatId, 'EVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY')
-      } else if (!parts[0]) {
-        await sendMessage(chatId, 'EVERYBODY ASKS WEN, BUT NOBODY ASKS /WHY')
+      if (!parts[0] || !targetMC || !hasSuffix) {
+        await sendMessage(chatId, 'Everybody asks wen, but nobody asks /why')
       } else {
         const currentMC  = await getMCap()
         const multiplier = targetMC / currentMC
-        await sendMessage(chatId, `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}`)
+        await sendMessage(chatId, `${multiplier.toFixed(2)}x until ${fmt(targetMC)}`)
       }
 
     } else if (text.startsWith('/approve')) {
@@ -366,7 +365,7 @@ export default async function handler(req, res) {
       await sendMessage(chatId, 'soSmart')
 
     } else if (text.startsWith('/wafe')) {
-      await sendMessage(chatId, 'THE KENDU WAFE STARTS WITH SMALL VOLUME INCREASES')
+      await sendMessage(chatId, 'The Kendu wafe starts with small volume increases')
 
     } else if (text.startsWith('/bad') || text.startsWith('/seejoshnudes')) {
       const mp4 = await fetch('https://kendu-dashboard.com/api/video')
@@ -382,18 +381,18 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: '<b>KENDU DASHBOARD</b>',
+          text: '<b>Kendu Dashboard</b>',
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[
-              { text: '🚀 OPEN DASHBOARD', web_app: { url: 'https://kendu-dashboard.com' } }
+              { text: '🚀 Open Dashboard', web_app: { url: 'https://kendu-dashboard.com' } }
             ]]
           }
         })
       })
     }
   } catch (e) {
-    await sendMessage(chatId, `ERROR: ${e.message}`)
+    await sendMessage(chatId, `Error: ${e.message}`)
   }
 
   res.status(200).send('OK')
