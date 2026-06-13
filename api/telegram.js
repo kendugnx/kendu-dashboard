@@ -347,6 +347,9 @@ export default async function handler(req, res) {
         await sendMessage(chatId, `${multiplier.toFixed(2)}X UNTIL ${fmt(targetMC)}`)
       }
 
+    } else if (text.startsWith('/sofinished')) {
+      await sendMessage(chatId, 'soSmart')
+
     } else if (text.startsWith('/wafe')) {
       await sendMessage(chatId, 'THE KENDU WAFE STARTS WITH SMALL VOLUME INCREASES')
 
