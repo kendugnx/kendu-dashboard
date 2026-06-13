@@ -52,9 +52,10 @@ function parseMC(str) {
 
 function fmt(n) {
   if (!isFinite(n)) return '—'
-  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B'
-  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'
-  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K'
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T'
+  if (n >= 1e9)  return '$' + (n / 1e9).toFixed(2) + 'B'
+  if (n >= 1e6)  return '$' + (n / 1e6).toFixed(2) + 'M'
+  if (n >= 1e3)  return '$' + (n / 1e3).toFixed(1) + 'K'
   return '$' + n.toFixed(2)
 }
 
@@ -268,7 +269,7 @@ export default async function handler(req, res) {
 
       if (!tokens) {
         await sendMessage(chatId,
-          `<b>USAGE:</b>\n/calc [HOLDING] — E.G. /calc 500M\n/calc [HOLDING] [TARGET MC] — E.G. /calc 500M 1B\n/calc [TIER] — E.G. /calc whale`
+          `<b>USAGE:</b>\n/calc [TOKEN AMOUNT] — E.G. /calc 500M\n/calc [TOKEN AMOUNT] [TARGET MC] — E.G. /calc 500M 1B\n/calc [TIER] — E.G. /calc whale`
         )
       } else {
         const mc = await getMCap()
@@ -297,18 +298,17 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/gains')) {
       const parts = text.split(/\s+/).slice(1)
-      const invested = parseFloat(parts[0]?.replace(/[$,]/g, ''))
+      const invested = parseMC(parts[0])
       const buyMC    = parseMC(parts[1])
 
-      const buyMCRaw = parts[1]
-      const hasSuffix = /[kmbt]$/i.test(buyMCRaw || '')
+      const hasSuffix = /[kmbt]$/i.test(parts[0] || '') && /[kmbt]$/i.test(parts[1] || '')
 
       if (!invested || !buyMC || !hasSuffix) {
         await sendMessage(chatId,
-          `<b>USAGE:</b> /gains [AMOUNT] [BUY MC]\n` +
+          `<b>USAGE:</b> /gains [DOLLAR AMOUNT] [BUY MC]\n` +
           `E.G. /gains 500 2.5M\n` +
-          `E.G. /gains 1000 500K\n\n` +
-          `MC MUST INCLUDE A UNIT (K, M, B)`
+          `E.G. /gains 1K 500K\n\n` +
+          `BOTH VALUES MUST INCLUDE A UNIT (K, M, B)`
         )
       } else {
         const currentMC  = await getMCap()
