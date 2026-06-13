@@ -359,6 +359,8 @@ export default async function handler(req, res) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/DENIED.jpg', '')
     } else if (text.startsWith('/false')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/FALSE.jpg', '')
+    } else if (text.startsWith('/ctoshi')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/ctoshi.jpg', '')
 
     } else if (text.startsWith('/sofinished')) {
       await sendMessage(chatId, 'soSmart')
