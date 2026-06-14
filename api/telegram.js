@@ -331,7 +331,7 @@ export default async function handler(req, res) {
       }
 
     } else if (text.startsWith('/why')) {
-      await sendMessage(chatId, 'Because fuck you, that\'s why.')
+      await sendMessage(chatId, 'Because...nevermind.')
 
     } else if (text.startsWith('/wen')) {
       const parts = text.split(/\s+/).slice(1)
@@ -362,7 +362,7 @@ export default async function handler(req, res) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/ctoshi.jpg', '@C_toshi')
 
     } else if (text.startsWith('/duderino')) {
-      await sendMessage(chatId, 'please accept my apology.')
+      await sendMessage(chatId, 'Please accept my apology.')
 
     } else if (text.startsWith('/shakira')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/shakira.webp', '')
