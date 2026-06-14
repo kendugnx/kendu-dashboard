@@ -331,7 +331,7 @@ export default async function handler(req, res) {
       }
 
     } else if (text.startsWith('/why')) {
-      await sendMessage(chatId, 'Because...nevermind.')
+      await sendMessage(chatId, 'Because fuck you, thats why.')
 
     } else if (text.startsWith('/wen')) {
       const parts = text.split(/\s+/).slice(1)
