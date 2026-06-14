@@ -361,6 +361,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/ctoshi')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/ctoshi.jpg', '@C_toshi')
 
+    } else if (text.startsWith('/duderino')) {
+      await sendMessage(chatId, 'please accept my apology.')
+
     } else if (text.startsWith('/shakira')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/shakira.webp', '')
     } else if (text.startsWith('/lorniko')) {
