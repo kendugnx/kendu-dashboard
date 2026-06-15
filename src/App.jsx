@@ -4,26 +4,33 @@ import HoldersChart      from './components/HoldersChart.jsx'
 import HolderMilestone   from './components/HolderMilestone.jsx'
 import HolderComposition from './components/HolderComposition.jsx'
 import TreasuryLP        from './components/TreasuryLP.jsx'
+import WalletTracker     from './components/WalletTracker.jsx'
 import Calculator        from './components/Calculator.jsx'
 import LinksCard         from './components/LinksCard.jsx'
 import PriceImpact       from './components/PriceImpact.jsx'
+import VolumeChart       from './components/VolumeChart.jsx'
+import BuyFeed           from './components/BuyFeed.jsx'
+import LeaderBoard       from './components/LeaderBoard.jsx'
 import useIsMobile       from './hooks/useIsMobile.js'
+import { useTheme }      from './hooks/useTheme.js'
 import styles from './App.module.css'
 
 export default function App() {
   const isMobile = useIsMobile(640)
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const [c, setC] = useState({
     network: false, chart: false,
-    holderPair: false,   // milestone + composition share this on desktop
-    milestone: false,    // individual on mobile
-    composition: false,  // individual on mobile
-    treasury: false, calculator: false, impact: false, links: false,
+    holderPair: false,
+    milestone: false,
+    composition: false,
+    treasury: false, wallet: false, calculator: false, impact: false,
+    volume: false, feed: false, board: false, links: false,
   })
   const toggle = key => setC(prev => ({ ...prev, [key]: !prev[key] }))
 
-  const milestoneCollapsed    = isMobile ? c.milestone    : c.holderPair
-  const compositionCollapsed  = isMobile ? c.composition  : c.holderPair
+  const milestoneCollapsed   = isMobile ? c.milestone   : c.holderPair
+  const compositionCollapsed = isMobile ? c.composition : c.holderPair
   const milestoneToggle   = () => toggle(isMobile ? 'milestone'   : 'holderPair')
   const compositionToggle = () => toggle(isMobile ? 'composition' : 'holderPair')
 
@@ -32,8 +39,11 @@ export default function App() {
       <header className={styles.header}>
         <div className={styles.headerText}>
           <span className={styles.headerKendu}>KENDU</span>
-          <span className={styles.headerDash}> DASHBOARD</span>
+          <span className={styles.headerDash}>DASHBOARD</span>
         </div>
+        <button className={styles.themeToggle} onClick={toggleTheme} title="Toggle theme">
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </header>
 
       <main className={styles.main}>
@@ -48,7 +58,17 @@ export default function App() {
           <HolderComposition collapsed={compositionCollapsed} onToggle={compositionToggle} />
         </section>
         <section className={styles.fullRow}>
+          <VolumeChart collapsed={c.volume} onToggle={() => toggle('volume')} />
+        </section>
+        <section className={styles.twoCol}>
+          <LeaderBoard collapsed={c.board} onToggle={() => toggle('board')} />
+          <BuyFeed     collapsed={c.feed}  onToggle={() => toggle('feed')} />
+        </section>
+        <section className={styles.fullRow}>
           <TreasuryLP collapsed={c.treasury} onToggle={() => toggle('treasury')} />
+        </section>
+        <section className={styles.fullRow}>
+          <WalletTracker collapsed={c.wallet} onToggle={() => toggle('wallet')} />
         </section>
         <section className={styles.fullRow}>
           <Calculator collapsed={c.calculator} onToggle={() => toggle('calculator')} />
