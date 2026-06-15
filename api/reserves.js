@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   if (!pool) return res.status(400).json({ error: 'missing pool' })
 
   const [reserveRes, ethPriceRes] = await Promise.all([
-    fetch('https://rpc.ankr.com/eth', {
+    fetch('https://cloudflare-eth.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
