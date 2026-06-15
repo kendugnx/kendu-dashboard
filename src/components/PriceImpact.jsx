@@ -7,6 +7,27 @@ import { LPS, CIRC_SUPPLY } from '../utils/constants.js'
 import { API } from '../utils/apiBase.js'
 import styles from './PriceImpact.module.css'
 
+// ---- Fetch actual Uniswap V2 reserves from the pool contract ----
+// KENDU is token0 (0xaa95 < 0xc02a), WETH is token1
+async function fetchV2LiquidityUSD(poolAddress, ethPriceUSD) {
+  const rpc = API.ethrpc()
+  const res = await fetch(rpc, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', method: 'eth_call',
+      params: [{ to: poolAddress, data: '0x0902f1ac' }, 'latest'],
+      id: 1,
+    }),
+  })
+  const j = await res.json()
+  const hex = j.result
+  if (!hex || hex === '0x') return null
+  const reserve1Wei = BigInt('0x' + hex.slice(66, 130)) // WETH reserve
+  const wethAmount  = Number(reserve1Wei) / 1e18
+  return wethAmount * ethPriceUSD * 2 // total liquidity USD
+}
+
 // ---- AMM math (constant-product v2 approximation) ----
 // Returns { newMC, pctChange, priceMultiplier }
 function calcImpact(currentMC, liquidityUSD, tradeUSD, isBuy) {
@@ -68,25 +89,39 @@ export default function PriceImpact({ collapsed, onToggle }) {
 
   const fetchLiquidity = useCallback(async () => {
     const CHAIN_NAMES = { eth: 'ethereum', base: 'base', sol: 'solana' }
-    // Fetch all 3 chains in parallel via DexScreener pairs endpoint
-    const results = await Promise.allSettled(
-      Object.entries(LPS).map(async ([chain, lp]) => {
-        const url = API.dex(`/latest/dex/pairs/${CHAIN_NAMES[chain]}/${lp.address}`)
-        const r = await fetch(url, { cache: 'no-store' })
-        const j = await r.json()
-        const pair = j?.pairs?.[0] || j?.pair
-        return { chain, liq: Number(pair?.liquidity?.usd || 0), mc: Number(pair?.marketCap || 0) }
-      })
-    )
+
+    // Fetch DexScreener + ETH price in parallel
+    const [dexResults, ethPriceRes] = await Promise.all([
+      Promise.allSettled(
+        Object.entries(LPS).map(async ([chain, lp]) => {
+          const url = API.dex(`/latest/dex/pairs/${CHAIN_NAMES[chain]}/${lp.address}`)
+          const r = await fetch(url, { cache: 'no-store' })
+          const j = await r.json()
+          const pair = j?.pairs?.[0] || j?.pair
+          return { chain, liq: Number(pair?.liquidity?.usd || 0), mc: Number(pair?.marketCap || 0) }
+        })
+      ),
+      fetch(API.coingecko('/simple/price?ids=ethereum&vs_currencies=usd'), { cache: 'no-store' })
+        .then(r => r.json()).catch(() => null),
+    ])
+
     const liqMap = { eth: null, base: null, sol: null }
     let bestMC = null
-    for (const res of results) {
+    for (const res of dexResults) {
       if (res.status === 'fulfilled') {
         const { chain, liq, mc } = res.value
         if (isFinite(liq) && liq > 0) liqMap[chain] = liq
         if (isFinite(mc) && mc > 0 && (!bestMC || chain === 'eth')) bestMC = mc
       }
     }
+
+    // Override ETH liquidity with on-chain reserves for accuracy
+    const ethPrice = ethPriceRes?.ethereum?.usd
+    if (ethPrice) {
+      const onChainLiq = await fetchV2LiquidityUSD(LPS.eth.address, ethPrice).catch(() => null)
+      if (onChainLiq && onChainLiq > 0) liqMap.eth = onChainLiq
+    }
+
     setLiquidity(liqMap)
     if (bestMC) setCurrentMC(bestMC)
     setUpdatedTs(Date.now())
@@ -286,7 +321,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
         <div className={styles.disclaimer}>
           <div className={styles.disclaimerTitle}>Estimates only — not financial advice</div>
           <ul className={styles.disclaimerList}>
-            <li>Uses constant-product (x·y=k) AMM formula. ETH/BASE pools may use concentrated liquidity (Uniswap v3 / Aerodrome), making real impact differ.</li>
+            <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity is fetched directly from the Uniswap V2 pool contract for accuracy. BASE (Aerodrome) and SOL (Raydium) use reported liquidity from DexScreener.</li>
             <li>"Instant arb" assumes price equalizes across all chains immediately; real arbitrage has latency and gas cost.</li>
             <li>Progressive mode compounds trades sequentially, approximating pool depth change between trades.</li>
             <li>Liquidity snapshots are live but can change rapidly with LP adds/removes.</li>
