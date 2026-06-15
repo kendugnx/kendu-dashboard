@@ -30,7 +30,10 @@ export default function App() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <img src="/kendu-logo.png" alt="KENDU" className={styles.logo} />
+        <div className={styles.headerText}>
+          <span className={styles.headerKendu}>KENDU</span>
+          <span className={styles.headerDash}> DASHBOARD</span>
+        </div>
       </header>
 
       <main className={styles.main}>
