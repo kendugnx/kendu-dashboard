@@ -10,24 +10,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  position: relative;
 }
-
-.themeToggle {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: 1px solid var(--surface-3);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 16px;
-  cursor: pointer;
-  line-height: 1;
-  transition: background 0.15s;
-}
-.themeToggle:hover { background: var(--surface-2); }
 
 .logo {
   height: clamp(32px, 5vw, 52px);
