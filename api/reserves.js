@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   ])
 
   const hex = reserveRes.result
-  if (!hex || hex === '0x') return res.status(500).json({ error: 'bad rpc response' })
+  if (!hex || hex === '0x') return res.status(500).json({ error: 'bad rpc response', raw: reserveRes })
 
   // KENDU is token0, WETH is token1
   const reserve1Wei = BigInt('0x' + hex.slice(66, 130))
