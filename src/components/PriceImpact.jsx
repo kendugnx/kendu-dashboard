@@ -7,25 +7,11 @@ import { LPS, CIRC_SUPPLY } from '../utils/constants.js'
 import { API } from '../utils/apiBase.js'
 import styles from './PriceImpact.module.css'
 
-// ---- Fetch actual Uniswap V2 reserves from the pool contract ----
-// KENDU is token0 (0xaa95 < 0xc02a), WETH is token1
-async function fetchV2LiquidityUSD(poolAddress, ethPriceUSD) {
-  const rpc = API.ethrpc()
-  const res = await fetch(rpc, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'eth_call',
-      params: [{ to: poolAddress, data: '0x0902f1ac' }, 'latest'],
-      id: 1,
-    }),
-  })
-  const j = await res.json()
-  const hex = j.result
-  if (!hex || hex === '0x') return null
-  const reserve1Wei = BigInt('0x' + hex.slice(66, 130)) // WETH reserve
-  const wethAmount  = Number(reserve1Wei) / 1e18
-  return wethAmount * ethPriceUSD * 2 // total liquidity USD
+// ---- Fetch actual Uniswap V2 reserves via serverless proxy ----
+async function fetchV2LiquidityUSD(poolAddress) {
+  const r = await fetch(`/api/reserves?pool=${poolAddress}`)
+  const j = await r.json()
+  return j.liquidityUSD ?? null
 }
 
 // ---- AMM math (constant-product v2 approximation) ----
@@ -90,8 +76,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const fetchLiquidity = useCallback(async () => {
     const CHAIN_NAMES = { eth: 'ethereum', base: 'base', sol: 'solana' }
 
-    // Fetch DexScreener + ETH price in parallel
-    const [dexResults, ethPriceRes] = await Promise.all([
+    const [dexResults, onChainLiq] = await Promise.all([
       Promise.allSettled(
         Object.entries(LPS).map(async ([chain, lp]) => {
           const url = API.dex(`/latest/dex/pairs/${CHAIN_NAMES[chain]}/${lp.address}`)
@@ -101,8 +86,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
           return { chain, liq: Number(pair?.liquidity?.usd || 0), mc: Number(pair?.marketCap || 0) }
         })
       ),
-      fetch(API.coingecko('/simple/price?ids=ethereum&vs_currencies=usd'), { cache: 'no-store' })
-        .then(r => r.json()).catch(() => null),
+      fetchV2LiquidityUSD(LPS.eth.address).catch(() => null),
     ])
 
     const liqMap = { eth: null, base: null, sol: null }
@@ -115,12 +99,8 @@ export default function PriceImpact({ collapsed, onToggle }) {
       }
     }
 
-    // Override ETH liquidity with on-chain reserves for accuracy
-    const ethPrice = ethPriceRes?.ethereum?.usd
-    if (ethPrice) {
-      const onChainLiq = await fetchV2LiquidityUSD(LPS.eth.address, ethPrice).catch(() => null)
-      if (onChainLiq && onChainLiq > 0) liqMap.eth = onChainLiq
-    }
+    // Override ETH with on-chain reserves
+    if (onChainLiq && onChainLiq > 0) liqMap.eth = onChainLiq
 
     setLiquidity(liqMap)
     if (bestMC) setCurrentMC(bestMC)
