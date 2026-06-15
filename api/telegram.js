@@ -372,6 +372,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/sofinished')) {
       await sendMessage(chatId, 'soSmart')
 
+    } else if (text.startsWith('/cliff')) {
+      await sendMessage(chatId, 'What a chad.')
+
     } else if (text.startsWith('/wafe')) {
       await sendMessage(chatId, 'The Kendu wafe starts with small volume increases')
 
