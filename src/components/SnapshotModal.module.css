@@ -19,7 +19,7 @@
   gap: 16px;
   padding: 20px;
   width: 100%;
-  max-width: 680px;
+  max-width: 560px;
 }
 
 .modalHead {
@@ -57,8 +57,7 @@
   padding: 28px 32px 22px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-height: 280px;
+  gap: 18px;
 }
 
 .cardBg {
@@ -70,15 +69,29 @@
   pointer-events: none;
 }
 
+/* Date — absolute top-right inside card */
+.cardDate {
+  position: absolute;
+  top: 30px;
+  right: 32px;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: #9E9399;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
 .cardHeader {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* date is absolute, so header is just logo + brand */
+  padding-right: 80px; /* leave room for absolute date */
 }
 
 .cardLogo {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
   mix-blend-mode: screen;
   opacity: 0.9;
@@ -89,12 +102,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  flex: 1;
 }
 
 .cardBrandName {
   font-family: var(--font-title);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #E8E6EE;
@@ -110,76 +122,108 @@
   line-height: 1.4;
 }
 
-.cardDate {
+/* ---- MC hero row ---- */
+.mcRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding-bottom: 16px;
+}
+
+.mcLabel {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #9E9399;
+  margin-bottom: 3px;
+}
+
+.mcValue {
+  font-family: var(--font-title);
+  font-size: 32px;
+  font-weight: 800;
+  color: #E8E6EE;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.mcChange {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding-bottom: 4px;
+}
+
+.mcChangePeriod {
   font-size: 11px;
+  font-weight: 400;
   letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+
+/* ---- Chain table ---- */
+.chainTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chainHead {
+  display: grid;
+  grid-template-columns: 90px repeat(4, 1fr);
+  gap: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+
+.chainHead span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   color: #9E9399;
   text-align: right;
 }
 
-.priceRow {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  padding-bottom: 18px;
-}
+.chainHead span:first-child { text-align: left; }
 
-.priceLabel {
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: #9E9399;
-  text-transform: uppercase;
-}
-
-.priceValue {
-  font-family: var(--font-title);
-  font-size: 28px;
-  font-weight: 700;
-  color: #E8E6EE;
-  letter-spacing: 0.04em;
-  flex: 1;
-}
-
-.priceChange {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.statsGrid {
+.chainRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px 24px;
+  grid-template-columns: 90px repeat(4, 1fr);
+  gap: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.chainRow span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #C8C4CC;
+  text-align: right;
+  letter-spacing: 0.02em;
 }
 
-.statLabel {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: #9E9399;
-  text-transform: uppercase;
+.chainRowLabel {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.14em !important;
+  color: #9E9399 !important;
+  text-align: left !important;
+  align-self: center;
 }
 
-.statValue {
-  font-size: 18px;
-  font-weight: 700;
-  color: #E8E6EE;
-  line-height: 1.2;
+.chainTotal {
+  color: #E8E6EE !important;
+  font-weight: 700 !important;
 }
 
-.statSub {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: #9E9399;
+.muted {
+  color: #5E5A62 !important;
 }
 
+/* ---- Footer ---- */
 .cardFooter {
   display: flex;
   align-items: center;
