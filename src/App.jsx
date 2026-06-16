@@ -126,11 +126,10 @@ export default function App() {
                 </svg>
               )}
             </button>
-            <button className={styles.headerBtn} onClick={() => setShowSnapshot(true)} title="Share snapshot">
+            <button className={styles.headerBtn} onClick={() => setShowSnapshot(true)} title="Snapshot">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
               </svg>
             </button>
           </div>

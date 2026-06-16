@@ -338,3 +338,34 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), 0.35);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.iconBtn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+.iconBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.iconBtnSpinner {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(var(--accent2-rgb), 0.3);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
