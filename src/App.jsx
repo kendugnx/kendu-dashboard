@@ -68,8 +68,8 @@ export default function App() {
     network:    <section className={styles.fullRow}><NetworkPulse collapsed={c.network} onToggle={() => toggle('network')} /></section>,
     chart:      <section className={styles.fullRow}><HoldersChart collapsed={c.chart} onToggle={() => toggle('chart')} /></section>,
     holderTrio: <section className={styles.threeCol}>
-                  <HolderConcentration collapsed={concentrationCollapsed} onToggle={concentrationToggle} />
                   <HolderMilestone     collapsed={milestoneCollapsed}     onToggle={milestoneToggle} />
+                  <HolderConcentration collapsed={concentrationCollapsed} onToggle={concentrationToggle} />
                   <HolderComposition   collapsed={compositionCollapsed}   onToggle={compositionToggle} />
                 </section>,
     milestone:  <section className={styles.fullRow}><HolderMilestone   collapsed={c.milestone}   onToggle={() => toggle('milestone')} /></section>,

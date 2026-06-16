@@ -12,7 +12,7 @@
 .chainMeta { font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; white-space: nowrap; }
 
 /* Desktop donut */
-.desktop { display: flex; flex: 1; align-items: center; }
+.desktop { display: flex; flex: 1; align-items: center; min-width: 0; }
 .mobile  { display: none; }
 
 .donutWrap {
@@ -22,10 +22,15 @@
   justify-content: center;
   width: 100%;
   padding: 6px;
+  container-type: inline-size;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .donut {
-  width: clamp(150px, 45vw, 220px);
-  height: clamp(150px, 45vw, 220px);
+  width: clamp(120px, 60cqw, 220px);
+  height: clamp(120px, 60cqw, 220px);
+  max-width: 100%;
+  max-height: 100%;
 }
 .donutCenter {
   position: absolute;

@@ -24,7 +24,6 @@ export default function HolderConcentration({ collapsed, onToggle }) {
   const hhi   = holders ? computeHHI(holders, HHI_EXCLUDED_ADDRESSES) : null
   const label = hhiLabel(hhi)
   const color = hhiColor(hhi)
-  const frac  = hhi != null ? Math.min(1, Math.max(0, hhi / HHI_MAX)) : 0
 
   return (
     <div className={`k-card ${styles.wrap}`}>
@@ -40,27 +39,11 @@ export default function HolderConcentration({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
-        {/* Desktop: centered number */}
         <div className={styles.centerArea}>
           <div className={styles.bigVal}>
             {hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.bigDenom}>/{HHI_MAX.toLocaleString()}</span>
           </div>
           <div className={styles.bigSub} style={{ color }}>{label} Concentration</div>
-        </div>
-
-        {/* Mobile: progress bar */}
-        <div className={styles.mobileBar}>
-          <div className={styles.mobileVal}>
-            {hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.mobileDenom}>/{HHI_MAX.toLocaleString()}</span>
-          </div>
-          <div className={styles.mobileBarTrack}>
-            <div className={styles.mobileBarFill} style={{ width: `${frac * 100}%`, background: color }} />
-          </div>
-          <div className={styles.mobileBarLabels}>
-            <span>0</span>
-            <span style={{ color }}>{label} Concentration</span>
-            <span>{HHI_MAX.toLocaleString()}</span>
-          </div>
         </div>
 
         <div className={styles.explainer}>HHI score based on the top 100 ETH holders, excluding bridges, liquidity pools, and exchange wallets.</div>
