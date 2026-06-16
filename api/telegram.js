@@ -2,6 +2,16 @@
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
 const SUPPLY = 996.74e9
+const KENDU_ETH_CA  = '0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18'
+const LP_ETH        = '0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
+const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
+
+// Curated CEX hot wallets excluded from HHI (EOAs, can't be detected on-chain) --
+// mirrors src/utils/constants.js EXCHANGE_WALLETS.
+const HHI_EXCLUDED = [
+  '0x22f83e4b9cB95CB99B88E8f4f15ea598C74c2788'.toLowerCase(),
+  '0x6D0D19bddDC5ED1dD501430c9621DD37ebd9062d'.toLowerCase(),
+]
 
 const HOLDERS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTD6EM3vr9AZzq8WDqFpxLEQOxqEBc-w89053lNBDed4AUcxKfeVl1lSPiK9bUJFkPN1Y3X-tVXrGnG/pub?gid=584295169&single=true&output=csv'
 
@@ -95,6 +105,114 @@ async function getMCap() {
   const j = await r.json()
   const pair = (j?.pairs || []).find(p => p.chainId === 'ethereum') || j?.pairs?.[0]
   return pair?.marketCap
+}
+
+async function getDexPair() {
+  const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${KENDU_ETH_CA}`, { cache: 'no-store' })
+  const j = await r.json()
+  return (j?.pairs || []).find(p => p.chainId === 'ethereum') || j?.pairs?.[0] || null
+}
+
+async function getGas() {
+  const params = new URLSearchParams({ chainid: '1', module: 'gastracker', action: 'gasoracle', apikey: ETHERSCAN_KEY })
+  const r = await fetch(`https://api.etherscan.io/v2/api?${params}`, { cache: 'no-store' })
+  const j = await r.json()
+  if (j.status !== '1') throw new Error(j.message || 'Gas API error')
+  const d = j.result
+  return {
+    fast:     Number(d.FastGasPrice),
+    standard: Number(d.ProposeGasPrice),
+    eco:      Number(d.SafeGasPrice),
+  }
+}
+
+// Batched eth_getCode + token0() probe -- mirrors api/holders.js, used to exclude
+// LPs/routers/bridges from HHI without a manual address list.
+async function getOnchainFlags(addresses) {
+  try {
+    const batch = []
+    addresses.forEach((addr, i) => {
+      batch.push({ jsonrpc: '2.0', id: `code${i}`, method: 'eth_getCode', params: [addr, 'latest'] })
+    })
+    const r = await fetch('https://ethereum.publicnode.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batch),
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!r.ok) return addresses.map(() => false)
+    const results = await r.json()
+    const byId = new Map(results.map(item => [item.id, item.result]))
+    return addresses.map((_, i) => {
+      const code = byId.get(`code${i}`)
+      return typeof code === 'string' && code !== '0x'
+    })
+  } catch {
+    return addresses.map(() => false)
+  }
+}
+
+async function getHHI() {
+  const apiKey = process.env.ETHPLORER_API_KEY || 'freekey'
+  const r = await fetch(`https://api.ethplorer.io/getTopTokenHolders/${KENDU_ETH_CA}?apiKey=${apiKey}&limit=100`, { cache: 'no-store' })
+  const j = await r.json()
+  if (!j.holders) throw new Error(j.error?.message || 'No holders data')
+  const isContract = await getOnchainFlags(j.holders.map(h => h.address))
+  const excludeSet = new Set(HHI_EXCLUDED)
+  const filtered = j.holders.filter((h, i) => !isContract[i] && !excludeSet.has(h.address.toLowerCase()))
+  const sum = filtered.reduce((acc, h) => {
+    const share = Number(h.share)
+    return isFinite(share) ? acc + share * share : acc
+  }, 0)
+  return Math.round(sum * 100) / 100
+}
+
+function hhiLabel(hhi) {
+  if (hhi == null || !isFinite(hhi)) return '—'
+  if (hhi < 1500) return 'Low'
+  if (hhi < 2500) return 'Moderate'
+  return 'High'
+}
+
+async function getVolumeCandles(days) {
+  const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/eth/pools/${LP_ETH}/ohlcv/day?limit=${days}&currency=usd`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+  const j = await r.json()
+  const ohlcv = j?.data?.attributes?.ohlcv_list || []
+  return [...ohlcv]
+    .sort((a, b) => a[0] - b[0])
+    .map(([ts, , , , , vol]) => ({ date: new Date(ts * 1000), vol: Number(vol) }))
+}
+
+async function buildVolumeChartUrl(candles, rangeLabel) {
+  const title   = `Kendu Volume - ${rangeLabel}`
+  const step    = Math.max(1, Math.floor(candles.length / 40))
+  const sampled = candles.filter((_, i) => i % step === 0 || i === candles.length - 1)
+  const labels  = sampled.map(c => c.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+  const data    = sampled.map(c => c.vol)
+
+  const config = {
+    type: 'bar',
+    data: { labels, datasets: [{ label: '', data, backgroundColor: 'rgba(255,107,74,0.7)' }] },
+    options: {
+      legend: { display: false },
+      title: { display: true, text: title, fontColor: '#FF6B4A', fontSize: 14, fontStyle: 'bold' },
+      scales: {
+        xAxes: [{ ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
+        yAxes: [{ ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
+      },
+      layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+    }
+  }
+
+  const shortRes = await fetch('https://quickchart.io/chart/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chart: config, width: 600, height: 320, backgroundColor: '#201E1F', version: '2' }),
+  })
+  const shortJson = await shortRes.json()
+  const shortUrl  = shortJson.url
+  if (!shortUrl) throw new Error('QuickChart error: ' + JSON.stringify(shortJson))
+  return shortUrl
 }
 
 async function fetchHoldersCSV() {
@@ -200,6 +318,10 @@ export default async function handler(req, res) {
         `/price — ETH price & Kendu MC\n` +
         `/mcap — Kendu market cap\n` +
         `/holders — Holder count & chart\n` +
+        `/gas — Current gas fees\n` +
+        `/hhi — Current HHI concentration\n` +
+        `/volume — Historic volume chart\n` +
+        `/snapshot — 24h snapshot card\n` +
         `/calc — Calculate holdings value\n` +
         `/gains — Gains calculator\n` +
         `/wen — Wen?\n` +
@@ -256,6 +378,63 @@ export default async function handler(req, res) {
 
       const chartUrl = await buildChartUrl(rangeRows, rangeLabel)
       await sendPhoto(chatId, chartUrl, caption)
+
+    } else if (text.startsWith('/gas') || text.startsWith('/gwei')) {
+      const gas = await getGas()
+      await sendMessage(chatId,
+        `<b>Current Gas Fees</b>\n` +
+        `Fast: ${gas.fast.toFixed(2)} GWEI\n` +
+        `Std: ${gas.standard.toFixed(2)} GWEI\n` +
+        `Eco: ${gas.eco.toFixed(2)} GWEI`
+      )
+
+    } else if (text.startsWith('/hhi')) {
+      const hhi = await getHHI()
+      await sendMessage(chatId, `<b>HHI Concentration:</b> ${hhiLabel(hhi)}\n${hhi.toFixed(0)}/10,000`)
+
+    } else if (text.startsWith('/volume')) {
+      const parts = text.split(/\s+/).slice(1)
+      const [rangeDays, rangeLabel] = parseRange(parts[0])
+      const days = Math.min(365, Math.max(7, rangeDays || 90))
+
+      const candles = await getVolumeCandles(days)
+      if (!candles.length) { await sendMessage(chatId, 'Error loading volume data.'); return res.status(200).send('OK') }
+
+      const total24h = candles[candles.length - 1]?.vol ?? 0
+      const totalRange = candles.reduce((a, c) => a + c.vol, 0)
+      const caption =
+        `<b>Volume (${rangeLabel})</b>\n` +
+        `24H: ${fmt(total24h)}\n` +
+        `Total: ${fmt(totalRange)}`
+
+      const chartUrl = await buildVolumeChartUrl(candles, rangeLabel)
+      await sendPhoto(chatId, chartUrl, caption)
+
+    } else if (text.startsWith('/snapshot')) {
+      const [pair, mc, hhi] = await Promise.all([
+        getDexPair().catch(() => null),
+        getMCap().catch(() => null),
+        getHHI().catch(() => null),
+      ])
+      const change24 = parseFloat(pair?.priceChange?.h24 ?? 0)
+      const vol24     = parseFloat(pair?.volume?.h24 ?? 0)
+      const liq       = parseFloat(pair?.liquidity?.usd ?? 0)
+      const buys      = pair?.txns?.h24?.buys  ?? 0
+      const sells     = pair?.txns?.h24?.sells ?? 0
+      const ratio     = sells > 0 ? (buys / sells).toFixed(2) : null
+      const changeSign = change24 >= 0 ? '+' : ''
+
+      const lines = [
+        `<b>Kendu 24H Snapshot</b>`,
+        ``,
+        `MC: ${fmt(mc)} (${changeSign}${change24.toFixed(2)}%)`,
+        `Volume: ${fmt(vol24)}`,
+        `Liquidity: ${fmt(liq)}`,
+        `Buys: ${buys}  Sells: ${sells}${ratio ? `  (${ratio}x)` : ''}`,
+      ]
+      if (hhi != null) lines.push(`HHI: ${hhiLabel(hhi)} (${hhi.toFixed(0)}/10,000)`)
+
+      await sendMessage(chatId, lines.join('\n'))
 
     } else if (text.startsWith('/calc')) {
       const parts = text.split(/\s+/).slice(1)
@@ -373,7 +552,7 @@ export default async function handler(req, res) {
       await sendMessage(chatId, 'soSmart')
 
     } else if (text.startsWith('/cliff')) {
-      await sendMessage(chatId, 'What a chad.')
+      await sendMessage(chatId, 'Spicy Chad.')
 
     } else if (text.startsWith('/wafe')) {
       await sendMessage(chatId, 'The Kendu wafe starts with small volume increases')
