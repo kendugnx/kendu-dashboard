@@ -9,6 +9,9 @@ const PAIR_ETH  = LPS.eth.address
 const PAIR_BASE = LPS.base.address
 const PAIR_SOL  = LPS.sol.address
 
+// GeckoTerminal pool address mirrors LPS.eth.address
+const GT_POOL_ETH = LPS.eth.address
+
 function fmtMC(v) {
   if (!v || v <= 0) return '—'
   if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B'
@@ -38,14 +41,14 @@ function parseHoldersCSV(text) {
 }
 
 async function fetchStats() {
-  const cgPath = '/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true'
-
-  const [ethPairRes, baseRes, solRes, csvRes, cmcRes] = await Promise.allSettled([
+  const [ethPairRes, baseRes, solRes, csvRes, cmcRes, tradesRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
     fetchCSV(HOLDERS_CSV_URL),
     fetch('/api/cmc-rank').then(r => r.json()),
+    fetch(`https://api.geckoterminal.com/api/v2/networks/eth/pools/${GT_POOL_ETH}/trades?limit=300`)
+      .then(r => r.json()),
   ])
 
   function pair(res) {
@@ -71,10 +74,40 @@ async function fetchStats() {
   const liqSol   = parseFloat(sol?.liquidity?.usd  ?? 0)
   const liqTotal = liqEth + liqBase + liqSol
 
-  const holders = csvRes.status === 'fulfilled' ? parseHoldersCSV(csvRes.value) : null
-  const cmcRank = cmcRes.status === 'fulfilled' ? (cmcRes.value?.rank ?? null) : null
+  // Buy/sell counts from DEXScreener txns (aggregate all chains)
+  const txEth  = eth?.txns?.h24  ?? {}
+  const txBase = base?.txns?.h24 ?? {}
+  const txSol  = sol?.txns?.h24  ?? {}
+  const buys   = (txEth.buys  ?? 0) + (txBase.buys  ?? 0) + (txSol.buys  ?? 0)
+  const sells  = (txEth.sells ?? 0) + (txBase.sells ?? 0) + (txSol.sells ?? 0)
 
-  return { mcap, change24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holders, cmcRank }
+  // Largest buy/sell from GeckoTerminal recent trades
+  let largestBuy  = 0
+  let largestSell = 0
+  if (tradesRes.status === 'fulfilled') {
+    const trades = tradesRes.value?.data ?? []
+    for (const t of trades) {
+      const usd  = parseFloat(t.attributes?.volume_in_usd ?? 0)
+      const kind = t.attributes?.kind
+      if (kind === 'buy'  && usd > largestBuy)  largestBuy  = usd
+      if (kind === 'sell' && usd > largestSell) largestSell = usd
+    }
+  }
+
+  const holders = csvRes.status === 'fulfilled' ? parseHoldersCSV(csvRes.value) : null
+  const cmcData = cmcRes.status === 'fulfilled' ? cmcRes.value : {}
+  const cmcRank  = cmcData?.rank     ?? null
+  const memeRank = cmcData?.memeRank ?? null
+
+  return {
+    mcap, change24,
+    volEth, volBase, volSol, volTotal,
+    liqEth, liqBase, liqSol, liqTotal,
+    holders,
+    buys, sells,
+    largestBuy, largestSell,
+    cmcRank, memeRank,
+  }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -113,6 +146,7 @@ export default function SnapshotModal({ onClose }) {
 
   const changeColor = stats?.change24 >= 0 ? '#24c65b' : '#B63733'
   const changeSign  = stats?.change24 >= 0 ? '+' : ''
+  const ratio       = stats && stats.sells > 0 ? (stats.buys / stats.sells).toFixed(2) : null
 
   return (
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -134,9 +168,10 @@ export default function SnapshotModal({ onClose }) {
             </div>
             <div className={styles.cardMeta}>
               <span className={styles.cardDate}>{dateStr}</span>
-              {stats?.cmcRank && (
-                <span className={styles.cmcBadge}>CMC #{stats.cmcRank}</span>
-              )}
+              <div className={styles.rankBadges}>
+                {stats?.cmcRank  && <span className={styles.cmcBadge}>CMC #{stats.cmcRank}</span>}
+                {stats?.memeRank && <span className={styles.cmcBadge}>MEME #{stats.memeRank}</span>}
+              </div>
             </div>
           </div>
 
@@ -151,7 +186,6 @@ export default function SnapshotModal({ onClose }) {
                   <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
                   <span className={styles.mcDelta} style={{ color: changeColor }}>
                     {changeSign}{stats.change24.toFixed(2)}%
-                    <span className={styles.mcDeltaSuffix}> 24H</span>
                   </span>
                 </div>
               </div>
@@ -189,6 +223,49 @@ export default function SnapshotModal({ onClose }) {
                   </div>
                 )}
               </div>
+
+              {/* ---- Activity ---- */}
+              {(stats.buys > 0 || stats.largestBuy > 0) && (
+                <div className={styles.activity}>
+                  <div className={styles.activityHead}>24H ACTIVITY</div>
+                  <div className={styles.activityRow}>
+                    <div className={styles.activityStat}>
+                      <span className={styles.activityLabel}>BUYS</span>
+                      <span className={styles.activityVal} style={{ color: '#24c65b' }}>
+                        {stats.buys.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className={styles.activityStat}>
+                      <span className={styles.activityLabel}>SELLS</span>
+                      <span className={styles.activityVal} style={{ color: '#B63733' }}>
+                        {stats.sells.toLocaleString()}
+                      </span>
+                    </div>
+                    {ratio && (
+                      <div className={styles.activityStat}>
+                        <span className={styles.activityLabel}>RATIO</span>
+                        <span className={styles.activityVal}>{ratio}×</span>
+                      </div>
+                    )}
+                    {stats.largestBuy > 0 && (
+                      <div className={styles.activityStat}>
+                        <span className={styles.activityLabel}>BIGGEST BUY</span>
+                        <span className={styles.activityVal} style={{ color: '#24c65b' }}>
+                          {fmtCompact(stats.largestBuy)}
+                        </span>
+                      </div>
+                    )}
+                    {stats.largestSell > 0 && (
+                      <div className={styles.activityStat}>
+                        <span className={styles.activityLabel}>BIGGEST SELL</span>
+                        <span className={styles.activityVal} style={{ color: '#B63733' }}>
+                          {fmtCompact(stats.largestSell)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.loadingMsg}>Failed to load stats.</div>
