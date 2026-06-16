@@ -3,6 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fmtUpdated, computeHHI, hhiLabel } from '../utils/index.js'
+import { HHI_EXCLUDED_ADDRESSES } from '../utils/constants.js'
 import styles from './HolderConcentration.module.css'
 
 export default function HolderConcentration({ collapsed, onToggle }) {
@@ -18,9 +19,12 @@ export default function HolderConcentration({ collapsed, onToggle }) {
   const { spinning, trigger } = useRefresh(loadData)
   useEffect(() => { loadData() }, [])
 
-  const hhi   = holders ? computeHHI(holders) : null
+  const excludeSet = new Set(HHI_EXCLUDED_ADDRESSES)
+  const realHolders = holders ? holders.filter(h => !excludeSet.has(String(h.address).toLowerCase())) : null
+
+  const hhi   = holders ? computeHHI(holders, HHI_EXCLUDED_ADDRESSES) : null
   const label = hhiLabel(hhi)
-  const top5  = holders ? holders.slice(0, 5) : []
+  const top5  = realHolders ? realHolders.slice(0, 5) : []
 
   return (
     <div className={`k-card ${styles.wrap}`}>

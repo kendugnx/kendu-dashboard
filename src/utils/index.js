@@ -195,9 +195,13 @@ export function rollingAvg(rows, days) {
 // ---- HHI (Herfindahl-Hirschman Index) ----
 // Computed from top-N holder shares (percent of supply, 0-100 each).
 // Long-tail holders outside the top N contribute negligibly since shares are squared.
-export function computeHHI(holders) {
+// `exclude` filters out non-holder addresses (bridges, LPs, CEX wallets) before summing.
+export function computeHHI(holders, exclude = []) {
   if (!Array.isArray(holders) || !holders.length) return null
-  const sum = holders.reduce((acc, h) => {
+  const excludeSet = new Set(exclude.map(a => a.toLowerCase()))
+  const filtered = holders.filter(h => !excludeSet.has(String(h.address).toLowerCase()))
+  if (!filtered.length) return null
+  const sum = filtered.reduce((acc, h) => {
     const share = Number(h.share)
     return isFinite(share) ? acc + share * share : acc
   }, 0)

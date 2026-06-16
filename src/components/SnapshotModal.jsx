@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
 import { getJSON, fetchCSV, computeHHI, hhiLabel } from '../utils/index.js'
 import { API } from '../utils/apiBase.js'
-import { LPS, CIRC_SUPPLY, HOLDERS_CSV_URL } from '../utils/constants.js'
+import { LPS, CIRC_SUPPLY, HOLDERS_CSV_URL, HHI_EXCLUDED_ADDRESSES } from '../utils/constants.js'
 import styles from './SnapshotModal.module.css'
 
 const PAIR_ETH  = LPS.eth.address
@@ -100,7 +100,7 @@ async function fetchStats() {
   const cmcRank  = cmcData?.rank     ?? null
   const memeRank = cmcData?.memeRank ?? null
   const hhi = holdersRes.status === 'fulfilled' && Array.isArray(holdersRes.value)
-    ? computeHHI(holdersRes.value)
+    ? computeHHI(holdersRes.value, HHI_EXCLUDED_ADDRESSES)
     : null
 
   return {

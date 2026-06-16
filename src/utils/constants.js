@@ -14,6 +14,17 @@ export const LPS = {
   sol:  { address: 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK', link: 'https://dexscreener.com/solana/b34pu6w8eecyrxledxbcpy5jofly3iyclapjpyiwbkmk', label: 'SOL: Raydium' },
 }
 
+// Contract / exchange wallets excluded from holder-concentration (HHI) calculations —
+// these aren't individually-controlled positions, they're bridges, LPs, and CEX hot wallets.
+export const HHI_EXCLUDED_ADDRESSES = [
+  '0x3ee18B2214AFF97000D974cf647E7C347E8fa585', // Wormhole bridge
+  '0xD9f2A7471d1998C69De5Cae6dF5d3f070F01DF9F', // Uniswap V2
+  '0x1474c1fA8078EDeeEb9753d76526c142158f3236', // Uniswap V3
+  '0x60a84e22d9d2b7FAbAcc3fdc987688B891acBF49', // Uniswap V3 / USDC
+  '0x22f83e4b9cB95CB99B88E8f4f15ea598C74c2788', // LBank
+  '0x6D0D19bddDC5ED1dD501430c9621DD37ebd9062d', // BitMart
+].map(a => a.toLowerCase())
+
 export const KENDU_ETH_CA  = '0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18'
 export const CIRC_SUPPLY   = 996.74e9
 export const ETHERSCAN_KEY = 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
