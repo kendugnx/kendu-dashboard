@@ -332,11 +332,19 @@ export default function VolumeChart({ collapsed, onToggle }) {
     tweenRafRef.current = requestAnimationFrame(step)
   }, [draw])
 
-  // Bars/line tween from the old dataset to the new one when the date range changes
+  // Bars/line tween from the old dataset to the new one when the date range changes.
+  // Dense ranges redraw too many points per frame to animate smoothly, so those
+  // snap instantly instead of janking.
+  const MAX_TWEEN_POINTS = 120
   useEffect(() => {
     const newKey = `${range}|${customDays}`
     if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
-      animateTween()
+      const oldLen = tweenFromRef.current.vol.length
+      if (series.length > MAX_TWEEN_POINTS || oldLen > MAX_TWEEN_POINTS) {
+        tweenFromRef.current = null
+      } else {
+        animateTween()
+      }
     }
     rangeKeyRef.current = newKey
   }, [series, animateTween, range, customDays])

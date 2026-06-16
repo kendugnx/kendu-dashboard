@@ -447,11 +447,19 @@ export default function HoldersChart({ collapsed, onToggle }) {
     tweenRafRef.current = requestAnimationFrame(step)
   }, [draw])
 
-  // Lines tween from the old dataset to the new one when the date range changes
+  // Lines tween from the old dataset to the new one when the date range changes.
+  // Dense ranges (e.g. All-time, 1Y) redraw too many points per frame to animate
+  // smoothly, so those snap instantly instead of janking.
+  const MAX_TWEEN_POINTS = 120
   useEffect(() => {
     const newKey = `${range}|${customDays}`
     if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
-      animateTween()
+      const oldLen = tweenFromRef.current.total.length
+      if (series.length > MAX_TWEEN_POINTS || oldLen > MAX_TWEEN_POINTS) {
+        tweenFromRef.current = null
+      } else {
+        animateTween()
+      }
     }
     rangeKeyRef.current = newKey
   }, [series, animateTween, range, customDays])
