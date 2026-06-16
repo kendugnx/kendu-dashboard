@@ -116,29 +116,35 @@
   .rangeInput { width: 90px; font-size: 11px; flex-shrink: 0; }
   .rangeChips { flex-wrap: nowrap; width: 100%; }
   .rangeChips > button { flex: 1; min-width: 0; padding: 8px 4px; font-size: 11px; }
-  .rightChips { display: flex; flex-wrap: wrap; align-items: center; width: 100%; gap: 8px; }
+  .rightChips { display: flex; flex-wrap: nowrap; align-items: center; width: 100%; gap: 8px; }
   .rightChips > button {
-    width: 100%;
+    flex: 1 1 auto;
     max-width: 100%;
-    flex: 0 1 auto;
     padding: 10px;
     font-size: 12px;
+    transition: max-width 0.3s ease;
   }
   .rightChips > button:global(.active) { max-width: 96px; }
+  /* Mobile MA chips: a single-row strip that slides out beside the Chart
+     button (like desktop) instead of wrapping/growing vertically. */
   .maChips {
-    display: grid;
-    grid-template-rows: 0fr;
     flex: 1 1 0;
     min-width: 0;
+    display: flex;
+    overflow: hidden;
     max-width: 0;
     opacity: 0;
-    align-self: center;
-    overflow: hidden;
-    transition: grid-template-rows 0.3s ease, opacity 0.25s ease;
+    transition: max-width 0.3s ease, opacity 0.25s ease;
   }
-  .maChips.visible { max-width: 100%; grid-template-rows: 1fr; opacity: 1; }
-  .maChipsInner { display: flex; flex-wrap: wrap; gap: 6px; overflow: hidden; min-height: 0; }
-  .maChipsInner > button { flex: 1; min-width: 56px; }
+  .maChips.visible { max-width: 100%; opacity: 1; }
+  .maChipsInner { display: flex; flex-wrap: nowrap; gap: 4px; width: 100%; }
+  .maChipsInner > button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 2px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
   .statsRow { flex-wrap: nowrap; gap: 4px; }
   .statPill {
     flex: 1;
