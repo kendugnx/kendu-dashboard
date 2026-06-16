@@ -195,7 +195,7 @@
 }
 
 /* ---- Responsive breakpoint ---- */
-@media (max-width: 720px) {
+@media (max-width: 840px) {
   .desktop { display: none; }
   .mobile  { display: flex; }
 }
