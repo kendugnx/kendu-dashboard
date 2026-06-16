@@ -22,13 +22,17 @@
   max-width: 520px;
 }
 
-/* Card has a fixed intrinsic width so the exported PNG is always the same
-   landscape shape regardless of device. On narrow viewports this wrapper
-   scrolls horizontally instead of letting the card itself shrink/reflow
-   into a taller, portrait-ish layout. */
-.cardScroll {
-  max-width: 100%;
-  overflow-x: auto;
+/* Card has a fixed intrinsic width (set on the inner transformed wrapper
+   in SnapshotModal.jsx) so the exported PNG is always the same landscape
+   shape regardless of device. On narrow viewports a CSS transform scales
+   the inner wrapper down to fit -- this outer element just clips the
+   reserved layout box down to the scaled visual size so there's no blank
+   space below it. cardRef itself is never transformed, so html2canvas
+   always captures it at full native resolution. */
+.cardScale {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 .modalHead {

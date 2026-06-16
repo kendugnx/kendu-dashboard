@@ -450,8 +450,15 @@ export default async function handler(req, res) {
       const parts = text.split(/\s+/).slice(1)
       const wantsPrice = parts[parts.length - 1] === 'price'
       if (wantsPrice) parts.pop()
-      const [rangeDays, rangeLabel] = parseRange(parts[0])
-      const days = Math.min(365, Math.max(7, rangeDays || 90))
+      const [parsedDays, parsedLabel] = parseRange(parts[0])
+
+      if (parsedDays != null && parsedDays > 180) {
+        await sendMessage(chatId, '180D max for /volume.')
+        return res.status(200).send('OK')
+      }
+
+      const days = Math.max(7, parsedDays ?? 180)
+      const rangeLabel = parsedDays != null ? parsedLabel : '180 Days'
 
       const candles = await getVolumeCandles(days)
       if (!candles.length) { await sendMessage(chatId, 'Error loading volume data.'); return res.status(200).send('OK') }

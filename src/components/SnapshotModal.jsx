@@ -1,17 +1,48 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import html2canvas from 'html2canvas'
 import SnapshotCard from './SnapshotCard.jsx'
 import styles from './SnapshotModal.module.css'
 
+const CARD_WIDTH = 480
+
 export default function SnapshotModal({ onClose }) {
   const [saving, setSaving]   = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [scale, setScale]     = useState(1)
+  const [naturalH, setNaturalH] = useState(0)
   const cardRef                = useRef(null)
+  const scaleOuterRef           = useRef(null)
+  const scaleInnerRef           = useRef(null)
   const canShare               = typeof navigator !== 'undefined' && !!navigator.share
 
+  // The card itself stays a fixed 480px wide (so the exported PNG is always
+  // the same landscape shape regardless of device) -- on narrow viewports
+  // we instead shrink it visually with a CSS transform on a wrapper, never
+  // touching cardRef's own box, so html2canvas keeps capturing it at full
+  // native resolution.
+  useEffect(() => {
+    const outer = scaleOuterRef.current
+    const inner = scaleInnerRef.current
+    if (!outer || !inner) return
+    const update = () => {
+      setScale(Math.min(1, outer.clientWidth / CARD_WIDTH))
+      setNaturalH(inner.offsetHeight)
+    }
+    update()
+    const ro1 = new ResizeObserver(update)
+    const ro2 = new ResizeObserver(update)
+    ro1.observe(outer)
+    ro2.observe(inner)
+    return () => { ro1.disconnect(); ro2.disconnect() }
+  }, [])
+
+  // html2canvas measures the card post-transform, so the visual fit-scale
+  // applied above (for narrow viewports) would otherwise shrink the
+  // exported resolution along with it. Compensate so the output stays a
+  // consistent ~960px-wide image on every device.
   const renderCanvas = useCallback(() =>
-    html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: null, logging: false }),
-  [])
+    html2canvas(cardRef.current, { scale: 2 / (scale || 1), useCORS: true, backgroundColor: null, logging: false }),
+  [scale])
 
   const download = useCallback(async () => {
     if (!cardRef.current) return
@@ -61,8 +92,10 @@ export default function SnapshotModal({ onClose }) {
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        <div className={styles.cardScroll}>
-          <SnapshotCard ref={cardRef} />
+        <div ref={scaleOuterRef} className={styles.cardScale} style={{ height: naturalH * scale || undefined }}>
+          <div ref={scaleInnerRef} style={{ width: CARD_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+            <SnapshotCard ref={cardRef} />
+          </div>
         </div>
 
         <div className={styles.actions}>
