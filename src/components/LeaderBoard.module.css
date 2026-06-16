@@ -86,12 +86,6 @@
   font-weight: 700;
 }
 
-.tier {
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .balance {
   font-weight: 700;
   font-size: 12px;

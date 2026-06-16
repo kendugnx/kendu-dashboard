@@ -14,15 +14,19 @@ export const LPS = {
   sol:  { address: 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK', link: 'https://dexscreener.com/solana/b34pu6w8eecyrxledxbcpy5jofly3iyclapjpyiwbkmk', label: 'SOL: Raydium' },
 }
 
-// Exchange hot wallets excluded from holder-concentration (HHI) calculations.
-// These are regular EOAs (not contracts), so they can't be caught by the on-chain
-// bytecode check in api/holders.js — bridges, LPs, and routers ARE contracts and get
-// excluded automatically there, so new pools/listings don't need an entry added here.
-// Only add CEX deposit/hot wallets to this list going forward.
-export const HHI_EXCLUDED_ADDRESSES = [
-  '0x22f83e4b9cB95CB99B88E8f4f15ea598C74c2788', // LBank
-  '0x6D0D19bddDC5ED1dD501430c9621DD37ebd9062d', // BitMart
-].map(a => a.toLowerCase())
+// Wormhole Token Bridge (Portal) on Ethereum — fixed, well-known contract address.
+export const WORMHOLE_BRIDGE = '0x3ee18B2214AFF97000D974cf647E7C347E8fa585'
+
+// CEX hot/deposit wallets. These are regular EOAs (not contracts), so they can't be
+// caught by the on-chain bytecode/pool checks in api/holders.js — bridges, LPs, and
+// routers ARE contracts and get detected automatically there, so new pools/listings
+// don't need an entry added here. Only add CEX wallets to this list going forward.
+export const EXCHANGE_WALLETS = [
+  { address: '0x22f83e4b9cB95CB99B88E8f4f15ea598C74c2788', label: 'LBank' },
+  { address: '0x6D0D19bddDC5ED1dD501430c9621DD37ebd9062d', label: 'BitMart' },
+]
+
+export const HHI_EXCLUDED_ADDRESSES = EXCHANGE_WALLETS.map(w => w.address.toLowerCase())
 
 export const KENDU_ETH_CA  = '0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18'
 export const CIRC_SUPPLY   = 996.74e9
