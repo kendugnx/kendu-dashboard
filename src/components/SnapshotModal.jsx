@@ -40,11 +40,10 @@ function parseHoldersCSV(text) {
 async function fetchStats() {
   const cgPath = '/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true'
 
-  const [ethPairRes, baseRes, solRes, cgEthRes, csvRes, cmcRes] = await Promise.allSettled([
+  const [ethPairRes, baseRes, solRes, csvRes, cmcRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
-    getJSON(API.coingecko(cgPath)),
     fetchCSV(HOLDERS_CSV_URL),
     fetch('/api/cmc-rank').then(r => r.json()),
   ])
@@ -62,10 +61,6 @@ async function fetchStats() {
   const mcap       = kenduPrice * CIRC_SUPPLY
   const change24   = parseFloat(eth?.priceChange?.h24 ?? 0)
 
-  const cgEth      = cgEthRes.status === 'fulfilled' ? cgEthRes.value : null
-  const ethPrice   = cgEth?.ethereum?.usd ?? null
-  const ethChange24 = cgEth?.ethereum?.usd_24h_change ?? null
-
   const volEth   = parseFloat(eth?.volume?.h24  ?? 0)
   const volBase  = parseFloat(base?.volume?.h24 ?? 0)
   const volSol   = parseFloat(sol?.volume?.h24  ?? 0)
@@ -79,7 +74,7 @@ async function fetchStats() {
   const holders = csvRes.status === 'fulfilled' ? parseHoldersCSV(csvRes.value) : null
   const cmcRank = cmcRes.status === 'fulfilled' ? (cmcRes.value?.rank ?? null) : null
 
-  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holders, cmcRank }
+  return { mcap, change24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holders, cmcRank }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -89,7 +84,9 @@ export default function SnapshotModal({ onClose }) {
   const cardRef               = useRef(null)
 
   useEffect(() => {
-    fetchStats().then(s => { setStats(s); setLoading(false) }).catch(e => { console.error('SnapshotModal fetchStats:', e); setLoading(false) })
+    fetchStats()
+      .then(s => { setStats(s); setLoading(false) })
+      .catch(e => { console.error('SnapshotModal fetchStats:', e); setLoading(false) })
   }, [])
 
   const download = useCallback(async () => {
@@ -114,10 +111,8 @@ export default function SnapshotModal({ onClose }) {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
 
-  const changeColor   = stats?.change24 >= 0 ? '#24c65b' : '#B63733'
-  const changeSign    = stats?.change24 >= 0 ? '+' : ''
-  const ethChgColor   = (stats?.ethChange24 ?? 0) >= 0 ? '#24c65b' : '#B63733'
-  const ethChgSign    = (stats?.ethChange24 ?? 0) >= 0 ? '+' : ''
+  const changeColor = stats?.change24 >= 0 ? '#24c65b' : '#B63733'
+  const changeSign  = stats?.change24 >= 0 ? '+' : ''
 
   return (
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -130,14 +125,18 @@ export default function SnapshotModal({ onClose }) {
         <div ref={cardRef} className={styles.card}>
           <div className={styles.cardBg} />
 
-          {/* Date — absolute top-right */}
-          <div className={styles.cardDate}>{dateStr}</div>
-
+          {/* ---- Header ---- */}
           <div className={styles.cardHeader}>
             <img src="/kendu-mask.png" alt="Kendu" className={styles.cardLogo} />
             <div className={styles.cardBrand}>
               <span className={styles.cardBrandName}>KENDU</span>
               <span className={styles.cardBrandSub}>DASHBOARD</span>
+            </div>
+            <div className={styles.cardMeta}>
+              <span className={styles.cardDate}>{dateStr}</span>
+              {stats?.cmcRank && (
+                <span className={styles.cmcBadge}>CMC #{stats.cmcRank}</span>
+              )}
             </div>
           </div>
 
@@ -145,54 +144,36 @@ export default function SnapshotModal({ onClose }) {
             <div className={styles.loadingMsg}>Loading stats…</div>
           ) : stats ? (
             <>
-              <div className={styles.heroBlock}>
-                {/* KENDU MC */}
-                <div className={styles.statRow}>
-                  <div className={styles.statLabel}>KENDU MC</div>
-                  <div className={styles.statValueRow}>
-                    <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
-                    <span className={styles.mcDelta} style={{ color: changeColor }}>
-                      {changeSign}{stats.change24.toFixed(2)}%<span className={styles.mcDeltaSuffix}>24H</span>
-                    </span>
-                  </div>
+              {/* ---- MC hero ---- */}
+              <div className={styles.mcBlock}>
+                <span className={styles.mcLabel}>KENDU MC</span>
+                <div className={styles.mcRow}>
+                  <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
+                  <span className={styles.mcDelta} style={{ color: changeColor }}>
+                    {changeSign}{stats.change24.toFixed(2)}%
+                    <span className={styles.mcDeltaSuffix}> 24H</span>
+                  </span>
                 </div>
-                {/* ETH Price */}
-                {stats.ethPrice != null && (
-                  <div className={styles.statRow}>
-                    <div className={styles.statLabel}>ETH PRICE</div>
-                    <div className={styles.statValueRow}>
-                      <span className={styles.ethValue}>${stats.ethPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                      {stats.ethChange24 != null && (
-                        <span className={styles.ethDelta} style={{ color: ethChgColor }}>
-                          {ethChgSign}{stats.ethChange24.toFixed(2)}%<span className={styles.mcDeltaSuffix}>24H</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {/* CMC badge */}
-                {stats.cmcRank && (
-                  <span className={styles.cmcBadge}>CMC MEME #{stats.cmcRank}</span>
-                )}
               </div>
 
+              {/* ---- Chain table ---- */}
               <div className={styles.chainTable}>
                 <div className={styles.chainHead}>
                   <span />
                   <span>ETH</span>
                   <span>BASE</span>
                   <span>SOL</span>
-                  <span>TOTAL</span>
+                  <span className={styles.chainHeadTotal}>TOTAL</span>
                 </div>
                 <div className={styles.chainRow}>
-                  <span className={styles.chainRowLabel}>24H VOLUME</span>
+                  <span className={styles.chainLabel}>24H VOL</span>
                   <span>{fmtCompact(stats.volEth)}</span>
                   <span>{fmtCompact(stats.volBase)}</span>
                   <span>{fmtCompact(stats.volSol)}</span>
                   <span className={styles.chainTotal}>{fmtCompact(stats.volTotal)}</span>
                 </div>
                 <div className={styles.chainRow}>
-                  <span className={styles.chainRowLabel}>LIQUIDITY</span>
+                  <span className={styles.chainLabel}>LIQUIDITY</span>
                   <span>{fmtCompact(stats.liqEth)}</span>
                   <span>{fmtCompact(stats.liqBase)}</span>
                   <span>{fmtCompact(stats.liqSol)}</span>
@@ -200,7 +181,7 @@ export default function SnapshotModal({ onClose }) {
                 </div>
                 {stats.holders && (
                   <div className={styles.chainRow}>
-                    <span className={styles.chainRowLabel}>HOLDERS</span>
+                    <span className={styles.chainLabel}>HOLDERS</span>
                     <span>{stats.holders.eth ? stats.holders.eth.toLocaleString() : '—'}</span>
                     <span>{stats.holders.base ? stats.holders.base.toLocaleString() : '—'}</span>
                     <span>{stats.holders.sol ? stats.holders.sol.toLocaleString() : '—'}</span>
@@ -213,6 +194,7 @@ export default function SnapshotModal({ onClose }) {
             <div className={styles.loadingMsg}>Failed to load stats.</div>
           )}
 
+          {/* ---- Footer ---- */}
           <div className={styles.cardFooter}>
             <span className={styles.cardUrl}>KENDU.io</span>
             <span className={styles.cardSlogan}>HIGHER.</span>

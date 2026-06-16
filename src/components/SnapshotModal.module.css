@@ -19,7 +19,7 @@
   gap: 16px;
   padding: 20px;
   width: 100%;
-  max-width: 560px;
+  max-width: 520px;
 }
 
 .modalHead {
@@ -48,49 +48,37 @@
 }
 .closeBtn:hover { background: var(--surface-2); color: var(--fg); }
 
-/* ---- The shareable card ---- */
+/* ---- Shareable card ---- */
 .card {
   position: relative;
   background: #201E1F;
   border-radius: 14px;
   overflow: hidden;
-  padding: 28px 32px 22px;
+  padding: 24px 28px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .cardBg {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(240,92,78,0.12) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(217,128,74,0.10) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 85% 10%, rgba(240,92,78,0.13) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 60% at 10% 85%, rgba(217,128,74,0.09) 0%, transparent 65%);
   pointer-events: none;
 }
 
-/* Date — absolute top-right inside card */
-.cardDate {
-  position: absolute;
-  top: 30px;
-  right: 32px;
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  color: #9E9399;
-  text-transform: uppercase;
-  line-height: 1;
-}
-
+/* ---- Header row: logo+brand | meta (date + cmc) ---- */
 .cardHeader {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-right: 80px;
 }
 
 .cardLogo {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   mix-blend-mode: screen;
   opacity: 0.9;
@@ -101,6 +89,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  flex: 1;
 }
 
 .cardBrandName {
@@ -112,7 +101,6 @@
   line-height: 1;
 }
 
-/* 1. Slightly increased kerning vs 0.30em */
 .cardBrandSub {
   font-family: var(--font-title);
   font-size: 8.5px;
@@ -123,30 +111,48 @@
   text-transform: uppercase;
 }
 
-/* ---- MC + ETH hero block ---- */
-.heroBlock {
+/* Date + CMC badge stacked top-right */
+.cardMeta {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  padding-bottom: 16px;
+  align-items: flex-end;
+  gap: 5px;
 }
 
-/* One stat row: label above, value+delta on same line */
-.statRow {
+.cardDate {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #9E9399;
+  white-space: nowrap;
+}
+
+.cmcBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #C8C4CC;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+/* ---- MC hero ---- */
+.mcBlock {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
-.statLabel {
+.mcLabel {
   font-size: 10px;
   letter-spacing: 0.16em;
   color: #9E9399;
 }
 
-/* Value + delta share a line; delta is right-justified */
-.statValueRow {
+.mcRow {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -154,124 +160,83 @@
 
 .mcValue {
   font-family: var(--font-title);
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
   color: #E8E6EE;
   letter-spacing: -0.01em;
   line-height: 1;
 }
 
-/* 3+4. ~75% of 32px = 24px; right-side with 24H suffix */
 .mcDelta {
   font-family: var(--font-title);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  text-align: right;
 }
 
 .mcDeltaSuffix {
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.1em;
-  margin-left: 4px;
-  opacity: 0.7;
-}
-
-/* 6. ETH price — same layout, smaller fonts */
-.ethValue {
-  font-family: var(--font-title);
-  font-size: 22px;
-  font-weight: 700;
-  color: #C8C4CC;
-  letter-spacing: -0.01em;
-  line-height: 1;
-}
-
-.ethDelta {
-  font-family: var(--font-title);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-align: right;
-}
-
-.cmcBadge {
-  align-self: flex-start;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #9E9399;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 6px;
-  padding: 3px 7px;
-  white-space: nowrap;
-  margin-top: 2px;
+  opacity: 0.65;
 }
 
 /* ---- Chain table ---- */
 .chainTable {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .chainHead {
   display: grid;
-  grid-template-columns: 100px repeat(4, 1fr);
-  gap: 0;
-  padding: 0 0 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  margin-bottom: 4px;
+  grid-template-columns: 88px repeat(3, 1fr) 72px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 2px;
 }
 
 .chainHead span {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   color: #9E9399;
-  text-align: left;
 }
-.chainHead span:last-child { text-align: right; }
+
+.chainHeadTotal {
+  text-align: right;
+}
 
 .chainRow {
   display: grid;
-  grid-template-columns: 100px repeat(4, 1fr);
-  gap: 0;
-  padding: 9px 0;
+  grid-template-columns: 88px repeat(3, 1fr) 72px;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
-/* 8. Remove border on last row */
-.chainRow:last-child { border-bottom: none; }
-
-.chainRow span {
-  font-size: 13px;
-  font-weight: 600;
-  color: #C8C4CC;
-  text-align: left;
-  letter-spacing: 0.02em;
+.chainRow:last-child {
+  border-bottom: none;
 }
 
-.chainRowLabel {
+.chainRow span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #A8A4AC;
+  letter-spacing: 0.01em;
+}
+
+.chainLabel {
   font-size: 10px !important;
   font-weight: 700 !important;
   letter-spacing: 0.14em !important;
   color: #9E9399 !important;
-  text-align: left !important;
   align-self: center;
 }
 
-/* 7. Larger total column */
 .chainTotal {
   color: #F05C4E !important;
   font-weight: 800 !important;
-  font-size: 17px !important;
+  font-size: 14px !important;
   text-align: right !important;
-}
-
-.muted {
-  color: #5E5A62 !important;
 }
 
 /* ---- Footer ---- */
@@ -279,9 +244,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: auto;
 }
 
 .cardUrl {
@@ -305,7 +270,6 @@
   padding: 32px 0;
 }
 
-/* ---- Footer actions ---- */
 .actions {
   display: flex;
   justify-content: flex-end;
