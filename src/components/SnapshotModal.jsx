@@ -114,7 +114,9 @@ export default function SnapshotModal({ onClose }) {
   const [stats, setStats]     = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
+  const [sharing, setSharing] = useState(false)
   const cardRef               = useRef(null)
+  const canShare              = typeof navigator !== 'undefined' && !!navigator.share
 
   useEffect(() => {
     fetchStats()
@@ -122,16 +124,15 @@ export default function SnapshotModal({ onClose }) {
       .catch(e => { console.error('SnapshotModal fetchStats:', e); setLoading(false) })
   }, [])
 
+  const renderCanvas = useCallback(() =>
+    html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: null, logging: false }),
+  [])
+
   const download = useCallback(async () => {
     if (!cardRef.current) return
     setSaving(true)
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null,
-        logging: false,
-      })
+      const canvas = await renderCanvas()
       const link = document.createElement('a')
       link.download = `kendu-${Date.now()}.png`
       link.href = canvas.toDataURL('image/png')
@@ -139,7 +140,33 @@ export default function SnapshotModal({ onClose }) {
     } finally {
       setSaving(false)
     }
-  }, [])
+  }, [renderCanvas])
+
+  const share = useCallback(async () => {
+    if (!cardRef.current) return
+    setSharing(true)
+    try {
+      const canvas = await renderCanvas()
+      canvas.toBlob(async blob => {
+        try {
+          const file = new File([blob], 'kendu-snapshot.png', { type: 'image/png' })
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'KENDU Snapshot' })
+          } else {
+            // Fallback: share URL only
+            await navigator.share({ title: 'KENDU Snapshot', url: window.location.href })
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') console.error('share failed:', e)
+        } finally {
+          setSharing(false)
+        }
+      }, 'image/png')
+    } catch (e) {
+      console.error('share render failed:', e)
+      setSharing(false)
+    }
+  }, [renderCanvas])
 
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
@@ -275,9 +302,14 @@ export default function SnapshotModal({ onClose }) {
         </div>
 
         <div className={styles.actions}>
-          <button className="k-btn" onClick={download} disabled={saving || loading}>
-            {saving ? 'Saving…' : '⬇ Download PNG'}
+          <button className="k-btn" onClick={download} disabled={saving || sharing || loading}>
+            {saving ? 'Saving…' : '⬇ Download'}
           </button>
+          {canShare && (
+            <button className="k-btn" onClick={share} disabled={saving || sharing || loading}>
+              {sharing ? 'Sharing…' : '↑ Share'}
+            </button>
+          )}
         </div>
       </div>
     </div>
