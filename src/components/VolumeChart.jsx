@@ -43,7 +43,7 @@ function movingAvgPrice(rows, n) {
   })
 }
 
-function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice) {
+function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice, reveal = 1) {
   if (!series.length) return
 
   const N    = series.length
@@ -68,10 +68,13 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
     const x    = pad.l + (plotW / N) * i + (plotW / N - barW) / 2
     const yTop = yScale(series[i].vol)
     const yBot = yScale(0)
-    const h    = Math.max(1, yBot - yTop)
+    const h    = Math.max(reveal > 0 ? 1 : 0, (yBot - yTop) * reveal)
     ctx.fillStyle = i === tooltipIdx ? '#F05C4E' : 'rgba(240, 92, 78, 0.55)'
-    ctx.fillRect(Math.floor(x), Math.floor(yTop), barW, Math.ceil(h))
+    ctx.fillRect(Math.floor(x), Math.floor(yBot - h), barW, Math.ceil(h))
   }
+
+  const baselineY = pad.t + plotH
+  const rY = y => baselineY + (y - baselineY) * reveal
 
   // MC line + MA lines + right axis
   if (showPrice) {
@@ -97,7 +100,7 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
         for (let i = 0; i < N; i++) {
           if (!isFinite(maVals[i])) continue
           const x = pad.l + (i / (N - 1)) * plotW
-          const y = mScale(maVals[i] * CIRC_SUPPLY)
+          const y = rY(mScale(maVals[i] * CIRC_SUPPLY))
           if (!started) { ctx.moveTo(x, y); started = true }
           else ctx.lineTo(x, y)
         }
@@ -106,7 +109,7 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
 
       // MC line — bezier with up/down gradient matching HoldersChart
       const pts = mcs
-        .map((mc, i) => mc != null ? { x: pad.l + (i / (N - 1)) * plotW, y: mScale(mc), mc } : null)
+        .map((mc, i) => mc != null ? { x: pad.l + (i / (N - 1)) * plotW, y: rY(mScale(mc)), mc } : null)
         .filter(Boolean)
 
       if (pts.length > 1) {
@@ -133,7 +136,7 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
       // Hover dot
       if (tooltipIdx != null && tooltipIdx >= 0 && tooltipIdx < N && mcs[tooltipIdx] != null) {
         const xd = pad.l + (tooltipIdx / (N - 1)) * plotW
-        const yd = mScale(mcs[tooltipIdx])
+        const yd = rY(mScale(mcs[tooltipIdx]))
         const prevMC = mcs.slice(0, tooltipIdx).reverse().find(v => v != null)
         const dotColor = prevMC ? (mcs[tooltipIdx] >= prevMC ? '#24c65b' : '#ff5e57') : '#24c65b'
         const isLight = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
@@ -191,6 +194,10 @@ export default function VolumeChart({ collapsed, onToggle }) {
 
   const canvasRef = useRef(null)
   const wrapRef   = useRef(null)
+  const revealRef = useRef(0)
+  const rafRef    = useRef(null)
+  const hasDataRef = useRef(false)
+  const prevSpinningRef = useRef(false)
 
   const fetchVolume = useCallback(async () => {
     const r = await fetch('/api/volume?days=180')
@@ -249,8 +256,39 @@ export default function VolumeChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice)
+    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice, revealRef.current)
   }, [series, maLines, activeMAs, tooltipIdx, showPrice])
+
+  const animateReveal = useCallback((from, to, duration) => {
+    cancelAnimationFrame(rafRef.current)
+    const start = performance.now()
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3)
+      revealRef.current = from + (to - from) * eased
+      draw()
+      if (t < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Bars/line grow up from the x-axis the first time data loads
+  useEffect(() => {
+    if (series.length && !hasDataRef.current) {
+      hasDataRef.current = true
+      animateReveal(0, 1, 650)
+    }
+  }, [series, animateReveal])
+
+  // Shrink back to the x-axis while refreshing, then grow back in
+  useEffect(() => {
+    if (spinning && !prevSpinningRef.current) {
+      animateReveal(revealRef.current, 0, 280)
+    } else if (!spinning && prevSpinningRef.current && series.length) {
+      animateReveal(0, 1, 550)
+    }
+    prevSpinningRef.current = spinning
+  }, [spinning, series, animateReveal])
 
   useEffect(() => {
     draw()
@@ -261,7 +299,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect() }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {

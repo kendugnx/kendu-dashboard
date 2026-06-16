@@ -110,7 +110,7 @@ function joinByDate(holdRows, mcRows) {
 }
 
 // ---- Canvas draw ----
-function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
+function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, reveal = 1) {
   if (!series.length) return
 
   const N    = series.length
@@ -138,6 +138,9 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
     }
   }
 
+  const baselineY = pad.t + plotH
+  const rY = y => baselineY + (y - baselineY) * reveal
+
   drawYGrid(ctx, yT, pad, plotW, plotH, fmtNum, pad.axisFontSize)
 
   if (yMScale && yM) {
@@ -156,7 +159,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
   // MC line
   if (showMC && yMScale) {
     const mcPts = series
-      .map((r, i) => isFinite(r.mc) ? { x: xScale(i), y: yMScale(r.mc), mc: r.mc } : null)
+      .map((r, i) => isFinite(r.mc) ? { x: xScale(i), y: rY(yMScale(r.mc)), mc: r.mc } : null)
       .filter(Boolean)
     if (mcPts.length > 1) {
       ctx.beginPath()
@@ -185,7 +188,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
       if (isFinite(r.mc)) {
         const prev = series.slice(0, tooltipIdx).reverse().find(s => isFinite(s.mc))
         const dotColor = prev ? (r.mc >= prev.mc ? '#24c65b' : '#ff5e57') : '#24c65b'
-        const xd = xScale(tooltipIdx), yd = yMScale(r.mc)
+        const xd = xScale(tooltipIdx), yd = rY(yMScale(r.mc))
         const isLightDot = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
         ctx.fillStyle = isLightDot ? '#FFFFFF' : '#E6EDF3'
         ctx.strokeStyle = dotColor
@@ -211,7 +214,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
     let started = false
     for (let i = 0; i < N; i++) {
       if (!isFinite(maVals[i])) continue
-      const x = xScale(i), y = scaleY(maVals[i])
+      const x = xScale(i), y = rY(scaleY(maVals[i]))
       if (!started) { ctx.moveTo(x, y); started = true }
       else ctx.lineTo(x, y)
     }
@@ -220,7 +223,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
 
   // Holders line
   {
-    const pts = series.map((r, i) => ({ x: xScale(i), y: yTScale(r.total) }))
+    const pts = series.map((r, i) => ({ x: xScale(i), y: rY(yTScale(r.total)) }))
     ctx.strokeStyle = '#F05C4E'
     ctx.lineWidth = 3
     ctx.setLineDash([])
@@ -248,7 +251,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
     ctx.stroke()
     ctx.setLineDash([])
 
-    const y = yTScale(series[tooltipIdx].total)
+    const y = rY(yTScale(series[tooltipIdx].total))
     if (isFinite(y)) {
       ctx.fillStyle = '#F05C4E'
       ctx.beginPath()
@@ -273,6 +276,10 @@ export default function HoldersChart({ collapsed, onToggle }) {
 
   const canvasRef = useRef(null)
   const wrapRef   = useRef(null)
+  const revealRef = useRef(0)
+  const rafRef    = useRef(null)
+  const hasDataRef = useRef(false)
+  const prevSpinningRef = useRef(false)
 
   const series = useMemo(() => {
     const filtered = customDays != null
@@ -364,8 +371,39 @@ export default function HoldersChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx)
+    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx, revealRef.current)
   }, [series, maLines, maMCLines, activeMAs, showMC, tooltipIdx])
+
+  const animateReveal = useCallback((from, to, duration) => {
+    cancelAnimationFrame(rafRef.current)
+    const start = performance.now()
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3)
+      revealRef.current = from + (to - from) * eased
+      draw()
+      if (t < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Line grows up from the x-axis the first time data loads
+  useEffect(() => {
+    if (series.length && !hasDataRef.current) {
+      hasDataRef.current = true
+      animateReveal(0, 1, 650)
+    }
+  }, [series, animateReveal])
+
+  // Line shrinks back to the x-axis while refreshing, then grows back in
+  useEffect(() => {
+    if (spinning && !prevSpinningRef.current) {
+      animateReveal(revealRef.current, 0, 280)
+    } else if (!spinning && prevSpinningRef.current && series.length) {
+      animateReveal(0, 1, 550)
+    }
+    prevSpinningRef.current = spinning
+  }, [spinning, series, animateReveal])
 
   useEffect(() => {
     draw()
@@ -376,7 +414,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect() }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {
