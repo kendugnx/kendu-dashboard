@@ -40,7 +40,6 @@
 /* MA chips animate in beside the Chart button */
 .maChips {
   display: flex;
-  gap: 6px;
   overflow: hidden;
   max-width: 0;
   opacity: 0;
@@ -50,6 +49,7 @@
   max-width: 300px;
   opacity: 1;
 }
+.maChipsInner { display: flex; gap: 6px; }
 
 .chartWrap {
   position: relative;
@@ -123,7 +123,6 @@
     flex: 0 1 auto;
     padding: 10px;
     font-size: 12px;
-    transition: max-width 0.3s ease;
   }
   .rightChips > button:global(.active) { max-width: 96px; }
   .maChips {
@@ -134,7 +133,8 @@
     max-width: 0;
     opacity: 0;
     align-self: center;
-    transition: max-width 0.3s ease, grid-template-rows 0.3s ease, opacity 0.25s ease;
+    overflow: hidden;
+    transition: grid-template-rows 0.3s ease, opacity 0.25s ease;
   }
   .maChips.visible { max-width: 100%; grid-template-rows: 1fr; opacity: 1; }
   .maChipsInner { display: flex; flex-wrap: wrap; gap: 6px; overflow: hidden; min-height: 0; }
