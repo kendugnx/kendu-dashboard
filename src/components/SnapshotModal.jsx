@@ -25,12 +25,13 @@ function fmtCompact(v) {
 }
 
 async function fetchStats() {
-  const [ethPairRes, baseRes, solRes, cgEthRes, holdersRes] = await Promise.allSettled([
+  const [ethPairRes, baseRes, solRes, cgEthRes, holdersRes, cmcRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true').then(r => r.json()),
     fetch(`https://api.ethplorer.io/getTokenInfo/${KENDU_ETH_CA}?apiKey=freekey`).then(r => r.json()),
+    fetch('/api/cmc-rank').then(r => r.json()),
   ])
 
   function pair(res) {
@@ -61,8 +62,9 @@ async function fetchStats() {
   const liqTotal = liqEth + liqBase + liqSol
 
   const holdersEth = holdersRes.status === 'fulfilled' ? (holdersRes.value?.holdersCount ?? null) : null
+  const cmcRank    = cmcRes.status === 'fulfilled' ? (cmcRes.value?.rank ?? null) : null
 
-  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holdersEth }
+  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holdersEth, cmcRank }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -135,6 +137,9 @@ export default function SnapshotModal({ onClose }) {
                   <span className={styles.mcDelta} style={{ color: changeColor }}>
                     {changeSign}{stats.change24.toFixed(2)}%
                   </span>
+                  {stats.cmcRank && (
+                    <span className={styles.cmcBadge}>CMC MEME #{stats.cmcRank}</span>
+                  )}
                 </div>
                 {stats.ethPrice != null && (
                   <div className={styles.ethRow}>

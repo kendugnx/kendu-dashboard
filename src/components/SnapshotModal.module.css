@@ -160,6 +160,19 @@
   letter-spacing: 0.04em;
 }
 
+.cmcBadge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #9E9399;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 3px 7px;
+  align-self: center;
+  white-space: nowrap;
+}
+
 /* ETH native price row */
 .ethRow {
   display: flex;
