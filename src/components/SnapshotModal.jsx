@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
-import { fmtNum, getJSON } from '../utils/index.js'
+import { getJSON } from '../utils/index.js'
 import { API } from '../utils/apiBase.js'
-import { KENDU_ETH_CA, LPS, CIRC_SUPPLY } from '../utils/constants.js'
+import { LPS, CIRC_SUPPLY } from '../utils/constants.js'
 import styles from './SnapshotModal.module.css'
 
 const PAIR_ETH  = LPS.eth.address
@@ -15,6 +15,13 @@ function fmtMC(v) {
   if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M'
   if (v >= 1e3) return '$' + (v / 1e3).toFixed(2) + 'K'
   return '$' + v.toFixed(2)
+}
+
+function fmtPrice(v) {
+  if (!v || v <= 0) return '—'
+  if (v < 0.00001) return '$' + v.toFixed(10).replace(/0+$/, '')
+  if (v < 0.001)   return '$' + v.toFixed(8).replace(/0+$/, '')
+  return '$' + v.toFixed(6)
 }
 
 function fmtCompact(v) {
@@ -44,25 +51,17 @@ async function fetchStats() {
   const mcap     = price * CIRC_SUPPLY
   const change24 = parseFloat(eth?.priceChange?.h24 ?? 0)
 
-  const volEth  = parseFloat(eth?.volume?.h24  ?? 0)
-  const volBase = parseFloat(base?.volume?.h24 ?? 0)
-  const volSol  = parseFloat(sol?.volume?.h24  ?? 0)
+  const volEth   = parseFloat(eth?.volume?.h24  ?? 0)
+  const volBase  = parseFloat(base?.volume?.h24 ?? 0)
+  const volSol   = parseFloat(sol?.volume?.h24  ?? 0)
   const volTotal = volEth + volBase + volSol
 
-  const liqEth  = parseFloat(eth?.liquidity?.usd  ?? 0)
-  const liqBase = parseFloat(base?.liquidity?.usd ?? 0)
-  const liqSol  = parseFloat(sol?.liquidity?.usd  ?? 0)
+  const liqEth   = parseFloat(eth?.liquidity?.usd  ?? 0)
+  const liqBase  = parseFloat(base?.liquidity?.usd ?? 0)
+  const liqSol   = parseFloat(sol?.liquidity?.usd  ?? 0)
   const liqTotal = liqEth + liqBase + liqSol
 
-  // ETH holder count from Ethplorer token info
-  let holdersEth = null
-  try {
-    const apiKey = 'freekey'
-    const ti = await fetch(`https://api.ethplorer.io/getTokenInfo/${KENDU_ETH_CA}?apiKey=${apiKey}`).then(r => r.json())
-    holdersEth = ti?.holdersCount ?? null
-  } catch {}
-
-  return { mcap, change24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holdersEth }
+  return { price, mcap, change24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -127,12 +126,13 @@ export default function SnapshotModal({ onClose }) {
           ) : stats ? (
             <>
               <div className={styles.mcRow}>
-                <div>
-                  <div className={styles.mcLabel}>MARKET CAP</div>
-                  <div className={styles.mcValue}>{fmtMC(stats.mcap)}</div>
-                </div>
-                <div className={styles.mcChange} style={{ color: changeColor }}>
-                  {changeSign}{stats.change24.toFixed(2)}% <span className={styles.mcChangePeriod}>24H</span>
+                <div className={styles.mcLabel}>MARKET CAP</div>
+                <div className={styles.mcValue}>{fmtMC(stats.mcap)}</div>
+                <div className={styles.mcPrice}>
+                  <span className={styles.mcPriceVal}>{fmtPrice(stats.price)}</span>
+                  <span className={styles.mcPriceDelta} style={{ color: changeColor }}>
+                    {changeSign}{stats.change24.toFixed(2)}%
+                  </span>
                 </div>
               </div>
 
@@ -145,7 +145,7 @@ export default function SnapshotModal({ onClose }) {
                   <span>TOTAL</span>
                 </div>
                 <div className={styles.chainRow}>
-                  <span className={styles.chainRowLabel}>VOLUME</span>
+                  <span className={styles.chainRowLabel}>24H VOLUME</span>
                   <span>{fmtCompact(stats.volEth)}</span>
                   <span>{fmtCompact(stats.volBase)}</span>
                   <span>{fmtCompact(stats.volSol)}</span>
@@ -158,13 +158,6 @@ export default function SnapshotModal({ onClose }) {
                   <span>{fmtCompact(stats.liqSol)}</span>
                   <span className={styles.chainTotal}>{fmtCompact(stats.liqTotal)}</span>
                 </div>
-                <div className={styles.chainRow}>
-                  <span className={styles.chainRowLabel}>HOLDERS</span>
-                  <span>{stats.holdersEth ? fmtNum(stats.holdersEth) : '—'}</span>
-                  <span className={styles.muted}>—</span>
-                  <span className={styles.muted}>—</span>
-                  <span className={styles.chainTotal}>{stats.holdersEth ? fmtNum(stats.holdersEth) : '—'}</span>
-                </div>
               </div>
             </>
           ) : (
@@ -172,8 +165,8 @@ export default function SnapshotModal({ onClose }) {
           )}
 
           <div className={styles.cardFooter}>
-            <span className={styles.cardUrl}>kendu.io</span>
-            <span className={styles.cardTag}>#KENDU · #HIGHERDOG</span>
+            <span className={styles.cardSlogan}>HIGHER.</span>
+            <span className={styles.cardUrl}>KENDU.io</span>
           </div>
         </div>
 
