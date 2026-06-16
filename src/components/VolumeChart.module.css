@@ -116,19 +116,27 @@
   .rangeInput { width: 90px; font-size: 11px; flex-shrink: 0; }
   .rangeChips { flex-wrap: nowrap; width: 100%; }
   .rangeChips > button { flex: 1; min-width: 0; padding: 8px 4px; font-size: 11px; }
-  .rightChips { display: flex; flex-direction: column; width: 100%; gap: 8px; }
-  .rightChips > button { order: 1; width: 100%; padding: 10px; font-size: 12px; }
-  .maChips {
-    order: 2;
-    flex-wrap: wrap;
+  .rightChips { display: flex; flex-wrap: wrap; align-items: center; width: 100%; gap: 8px; }
+  .rightChips > button {
     width: 100%;
-    max-width: none;
-    max-height: 0;
-    opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.25s ease;
+    max-width: 100%;
+    flex: 0 1 auto;
+    padding: 10px;
+    font-size: 12px;
+    transition: max-width 0.3s ease;
   }
-  .maChips.visible { max-height: 200px; opacity: 1; }
-  .maChips > button { flex: 1; min-width: 0; }
+  .rightChips > button:global(.active) { max-width: 96px; }
+  .maChips {
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 0.3s ease, opacity 0.25s ease;
+  }
+  .maChips.visible { max-width: 100%; opacity: 1; }
+  .maChips > button { flex: 1; min-width: 56px; }
   .statsRow { flex-wrap: nowrap; gap: 4px; }
   .statPill {
     flex: 1;
