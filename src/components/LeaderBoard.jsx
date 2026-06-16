@@ -12,6 +12,7 @@ function shortAddr(addr) {
 const LABELS = {
   [LPS.eth.address.toLowerCase()]:       'Uniswap V2 Pool',
   [LPS.base.address.toLowerCase()]:      'Aerodrome Pool',
+  '0x1474c1fa8078edeeeb9753d76526c142158f3236': 'Uniswap V3 Pool',
   [TREASURY_WALLET.toLowerCase()]:       'Treasury',
   [WORMHOLE_BRIDGE.toLowerCase()]:       'Wormhole Bridge',
   '0x000000000000000000000000000000000000dead': '🔥 Burn',
