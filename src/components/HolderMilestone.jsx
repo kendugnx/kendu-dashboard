@@ -126,7 +126,7 @@ export default function HolderMilestone({ collapsed, onToggle }) {
             ) : (
               <>
                 <div className={styles.ringNum}>{until != null ? fmtNum(until) : '—'}</div>
-                <div className={styles.ringSub}>Holders Until Goal</div>
+                <div className={styles.ringSub}>Until Goal</div>
               </>
             )}
           </div>

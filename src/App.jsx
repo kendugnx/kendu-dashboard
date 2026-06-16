@@ -32,7 +32,7 @@ import { useSortableOrder } from './hooks/useSortableOrder.js'
 import styles from './App.module.css'
 
 export default function App() {
-  const isMobile = useIsMobile(640)
+  const isMobile = useIsMobile(840)
   const { theme, toggle: toggleTheme } = useTheme()
   const { order, handleDragEnd, resetOrder } = useSortableOrder(isMobile)
   const [showSnapshot, setShowSnapshot] = useState(false)

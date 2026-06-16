@@ -21,10 +21,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 6px;
   container-type: inline-size;
   min-width: 0;
-  box-sizing: border-box;
 }
 .donut {
   width: clamp(120px, 60cqw, 220px);
