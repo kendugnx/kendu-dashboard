@@ -107,12 +107,6 @@ async function getMCap() {
   return pair?.marketCap
 }
 
-async function getDexPair() {
-  const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${KENDU_ETH_CA}`, { cache: 'no-store' })
-  const j = await r.json()
-  return (j?.pairs || []).find(p => p.chainId === 'ethereum') || j?.pairs?.[0] || null
-}
-
 async function getGas() {
   const params = new URLSearchParams({ chainid: '1', module: 'gastracker', action: 'gasoracle', apikey: ETHERSCAN_KEY })
   const r = await fetch(`https://api.etherscan.io/v2/api?${params}`, { cache: 'no-store' })
@@ -411,30 +405,13 @@ export default async function handler(req, res) {
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/snapshot')) {
-      const [pair, mc, hhi] = await Promise.all([
-        getDexPair().catch(() => null),
-        getMCap().catch(() => null),
-        getHHI().catch(() => null),
-      ])
-      const change24 = parseFloat(pair?.priceChange?.h24 ?? 0)
-      const vol24     = parseFloat(pair?.volume?.h24 ?? 0)
-      const liq       = parseFloat(pair?.liquidity?.usd ?? 0)
-      const buys      = pair?.txns?.h24?.buys  ?? 0
-      const sells     = pair?.txns?.h24?.sells ?? 0
-      const ratio     = sells > 0 ? (buys / sells).toFixed(2) : null
-      const changeSign = change24 >= 0 ? '+' : ''
-
-      const lines = [
-        `<b>Kendu 24H Snapshot</b>`,
-        ``,
-        `MC: ${fmt(mc)} (${changeSign}${change24.toFixed(2)}%)`,
-        `Volume: ${fmt(vol24)}`,
-        `Liquidity: ${fmt(liq)}`,
-        `Buys: ${buys}  Sells: ${sells}${ratio ? `  (${ratio}x)` : ''}`,
-      ]
-      if (hhi != null) lines.push(`HHI: ${hhiLabel(hhi)} (${hhi.toFixed(0)}/10,000)`)
-
-      await sendMessage(chatId, lines.join('\n'))
+      const imgRes = await fetch('https://kendu-dashboard.com/api/snapshot-image')
+      if (!imgRes.ok) throw new Error('Snapshot render failed')
+      const buf = await imgRes.arrayBuffer()
+      const form = new FormData()
+      form.append('chat_id', String(chatId))
+      form.append('photo', new Blob([buf], { type: 'image/png' }), 'kendu-snapshot.png')
+      await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: form })
 
     } else if (text.startsWith('/calc')) {
       const parts = text.split(/\s+/).slice(1)
