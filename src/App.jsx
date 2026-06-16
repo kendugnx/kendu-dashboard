@@ -15,6 +15,7 @@ import NetworkPulse      from './components/NetworkPulse.jsx'
 import HoldersChart      from './components/HoldersChart.jsx'
 import HolderMilestone   from './components/HolderMilestone.jsx'
 import HolderComposition from './components/HolderComposition.jsx'
+import HolderConcentration from './components/HolderConcentration.jsx'
 import TreasuryLP        from './components/TreasuryLP.jsx'
 import WalletTracker     from './components/WalletTracker.jsx'
 import Calculator        from './components/Calculator.jsx'
@@ -36,7 +37,7 @@ export default function App() {
   const { order, handleDragEnd, resetOrder } = useSortableOrder(isMobile)
   const [showSnapshot, setShowSnapshot] = useState(false)
 
-  const ALL_KEYS = ['network', 'chart', 'holderPair', 'milestone', 'composition', 'treasury', 'wallet', 'calculator', 'impact', 'volume', 'feedPair', 'feed', 'board', 'links']
+  const ALL_KEYS = ['network', 'chart', 'holderPair', 'milestone', 'composition', 'concentration', 'treasury', 'wallet', 'calculator', 'impact', 'volume', 'feedPair', 'feed', 'board', 'links']
 
   const [c, setC] = useState(() => Object.fromEntries(ALL_KEYS.map(k => [k, false])))
   const toggle = key => setC(prev => ({ ...prev, [key]: !prev[key] }))
@@ -70,6 +71,7 @@ export default function App() {
                 </section>,
     milestone:  <section className={styles.fullRow}><HolderMilestone   collapsed={c.milestone}   onToggle={() => toggle('milestone')} /></section>,
     composition:<section className={styles.fullRow}><HolderComposition collapsed={c.composition} onToggle={() => toggle('composition')} /></section>,
+    concentration:<section className={styles.fullRow}><HolderConcentration collapsed={c.concentration} onToggle={() => toggle('concentration')} /></section>,
     volume:     <section className={styles.fullRow}><VolumeChart collapsed={c.volume} onToggle={() => toggle('volume')} /></section>,
     feedPair:   <section className={styles.twoCol}>
                   <LeaderBoard collapsed={boardCollapsed} onToggle={boardToggle} />

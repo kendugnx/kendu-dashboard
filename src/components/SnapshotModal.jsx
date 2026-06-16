@@ -285,7 +285,9 @@ export default function SnapshotModal({ onClose }) {
                     {ratio && (
                       <div className={styles.activityColCenter}>
                         <span className={styles.activityLabel}>RATIO</span>
-                        <span className={styles.activityRatioVal}>{ratio}×</span>
+                        <div className={styles.activityRatioWrap}>
+                          <span className={styles.activityRatioVal}>{ratio}×</span>
+                        </div>
                       </div>
                     )}
                     {/* Right: sells */}

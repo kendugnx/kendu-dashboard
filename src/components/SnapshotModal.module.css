@@ -227,7 +227,7 @@
 }
 
 .chainTotal {
-  color: #F05C4E !important;
+  color: #E8E6EE !important;
   font-weight: 800 !important;
   font-size: 16px !important;
   text-align: right !important;
@@ -252,7 +252,7 @@
 
 .activityRow {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
 }
 
@@ -265,14 +265,20 @@
   flex: 1;
 }
 
-/* Center column — centered, larger ratio stat */
+/* Center column — label aligns with BUYS/SELLS labels, value stays vertically centered */
 .activityColCenter {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   align-items: center;
   flex: 0 0 auto;
   padding: 0 14px;
+}
+
+.activityRatioWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Right column — right-aligned, equal width to left column */
@@ -320,7 +326,7 @@
   font-family: var(--font-title);
   font-size: 26px;
   font-weight: 800;
-  color: #F05C4E;
+  color: #E8E6EE;
   letter-spacing: 0.01em;
   line-height: 1;
 }
