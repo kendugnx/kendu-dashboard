@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
-import { fmtUpdated, computeHHI, hhiLabel } from '../utils/index.js'
+import { fmtUpdated, computeHHI, hhiLabel, hhiColor } from '../utils/index.js'
 import { HHI_EXCLUDED_ADDRESSES } from '../utils/constants.js'
 import styles from './HolderConcentration.module.css'
 
@@ -23,12 +23,8 @@ export default function HolderConcentration({ collapsed, onToggle }) {
 
   const hhi   = holders ? computeHHI(holders, HHI_EXCLUDED_ADDRESSES) : null
   const label = hhiLabel(hhi)
+  const color = hhiColor(hhi)
   const frac  = hhi != null ? Math.min(1, Math.max(0, hhi / HHI_MAX)) : 0
-
-  // SVG ring
-  const RADIUS = 80
-  const CIRC   = 2 * Math.PI * RADIUS
-  const offset = CIRC * (1 - frac)
 
   return (
     <div className={`k-card ${styles.wrap}`}>
@@ -44,26 +40,26 @@ export default function HolderConcentration({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
-        <div className={styles.ringArea}>
-          <div className={styles.ringWrap}>
-            <svg className={styles.ring} viewBox="0 0 200 200">
-              <circle cx="100" cy="100" r={RADIUS} fill="none" stroke="rgba(240,92,78,.2)" strokeWidth="12" />
-              <circle
-                cx="100" cy="100" r={RADIUS}
-                fill="none"
-                stroke="#F05C4E"
-                strokeWidth="12"
-                strokeLinecap="butt"
-                strokeDasharray={CIRC}
-                strokeDashoffset={offset}
-                transform="rotate(-90 100 100)"
-                style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.22,.61,.36,1)' }}
-              />
-            </svg>
-            <div className={styles.ringCenter}>
-              <div className={styles.ringNum}>{hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.ringDenom}>/{HHI_MAX.toLocaleString()}</span></div>
-              <div className={styles.ringSub}>{label} Concentration</div>
-            </div>
+        {/* Desktop: centered number */}
+        <div className={styles.centerArea}>
+          <div className={styles.bigVal}>
+            {hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.bigDenom}>/{HHI_MAX.toLocaleString()}</span>
+          </div>
+          <div className={styles.bigSub} style={{ color }}>{label} Concentration</div>
+        </div>
+
+        {/* Mobile: progress bar */}
+        <div className={styles.mobileBar}>
+          <div className={styles.mobileVal}>
+            {hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.mobileDenom}>/{HHI_MAX.toLocaleString()}</span>
+          </div>
+          <div className={styles.mobileBarTrack}>
+            <div className={styles.mobileBarFill} style={{ width: `${frac * 100}%`, background: color }} />
+          </div>
+          <div className={styles.mobileBarLabels}>
+            <span>0</span>
+            <span style={{ color }}>{label} Concentration</span>
+            <span>{HHI_MAX.toLocaleString()}</span>
           </div>
         </div>
 

@@ -218,6 +218,13 @@ export function hhiLabel(hhi) {
   return 'High'
 }
 
+export function hhiColor(hhi) {
+  if (hhi == null || !isFinite(hhi)) return 'var(--muted)'
+  if (hhi < 1500) return 'var(--positive)'
+  if (hhi < 2500) return 'var(--accent3)'
+  return 'var(--negative)'
+}
+
 // ---- Dexscreener best pair picker ----
 export function pickBestPair(pairs) {
   const eth = (pairs || []).filter(p => (p.chainId || '').toLowerCase() === 'ethereum')

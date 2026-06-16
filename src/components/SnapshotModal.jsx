@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
-import { getJSON, fetchCSV, computeHHI, hhiLabel } from '../utils/index.js'
+import { getJSON, fetchCSV, computeHHI, hhiLabel, hhiColor } from '../utils/index.js'
 import { API } from '../utils/apiBase.js'
 import { LPS, CIRC_SUPPLY, HOLDERS_CSV_URL, HHI_EXCLUDED_ADDRESSES } from '../utils/constants.js'
 import styles from './SnapshotModal.module.css'
@@ -257,9 +257,11 @@ export default function SnapshotModal({ onClose }) {
               {/* ---- HHI ---- */}
               {stats.hhi != null && (
                 <div className={styles.hhiRow}>
-                  <span className={styles.hhiLabel}>HHI CONCENTRATION</span>
+                  <span className={styles.hhiLabel}>
+                    HHI CONCENTRATION: <span style={{ color: hhiColor(stats.hhi) }}>{hhiLabel(stats.hhi).toUpperCase()}</span>
+                  </span>
                   <span className={styles.hhiVal}>
-                    {stats.hhi.toFixed(0)}<span className={styles.hhiDenom}>/10,000</span> <span className={styles.hhiTag}>{hhiLabel(stats.hhi)}</span>
+                    {stats.hhi.toFixed(0)}<span className={styles.hhiDenom}>/10,000</span>
                   </span>
                 </div>
               )}
