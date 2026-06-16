@@ -61,7 +61,9 @@ export default function SnapshotModal({ onClose }) {
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        <SnapshotCard ref={cardRef} />
+        <div className={styles.cardScroll}>
+          <SnapshotCard ref={cardRef} />
+        </div>
 
         <div className={styles.actions}>
           <button className={styles.iconBtn} onClick={download} disabled={saving || sharing} title="Download PNG">

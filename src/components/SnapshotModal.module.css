@@ -22,6 +22,15 @@
   max-width: 520px;
 }
 
+/* Card has a fixed intrinsic width so the exported PNG is always the same
+   landscape shape regardless of device. On narrow viewports this wrapper
+   scrolls horizontally instead of letting the card itself shrink/reflow
+   into a taller, portrait-ish layout. */
+.cardScroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .modalHead {
   display: flex;
   align-items: center;
@@ -51,6 +60,8 @@
 /* ---- Shareable card ---- */
 .card {
   position: relative;
+  width: 480px;
+  flex-shrink: 0;
   background: #201E1F;
   border-radius: 14px;
   overflow: hidden;

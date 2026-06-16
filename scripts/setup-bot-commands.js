@@ -11,17 +11,17 @@ if (!TOKEN) {
 }
 
 const commands = [
-  { command: 'price',     description: 'ETH price + Kendu MC' },
-  { command: 'mcap',      description: 'Kendu MC' },
-  { command: 'hhi',       description: 'Current HHI index' },
-  { command: 'gas',       description: 'Current ETH gas fees' },
-  { command: 'wen',       description: 'X to MC' },
-  { command: 'calc',      description: 'Holdings value calculator' },
-  { command: 'gains',     description: 'Gains calculator' },
-  { command: 'holders',   description: 'Holders chart' },
-  { command: 'volume',    description: 'Volume chart' },
-  { command: 'snapshot',  description: 'Generate 24h snapshot' },
-  { command: 'dashboard', description: 'Open the dashboard' },
+  { command: 'price',     description: 'ETH PRICE + KENDU MC' },
+  { command: 'mcap',      description: 'KENDU MC' },
+  { command: 'hhi',       description: 'CURRENT HHI INDEX' },
+  { command: 'gas',       description: 'CURRENT ETH GAS FEES' },
+  { command: 'wen',       description: 'X TO MC' },
+  { command: 'calc',      description: 'HOLDINGS VALUE CALCULATOR' },
+  { command: 'gains',     description: 'GAINS CALCULATOR' },
+  { command: 'holders',   description: 'HOLDERS CHART' },
+  { command: 'volume',    description: 'VOLUME CHART' },
+  { command: 'snapshot',  description: 'GENERATE 24H SNAPSHOT' },
+  { command: 'dashboard', description: 'OPEN THE DASHBOARD' },
   { command: 'help',      description: 'List all commands' },
 ]
 

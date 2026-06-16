@@ -68,10 +68,13 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   const yScale = drawYGrid(ctx, yT, pad, plotW, plotH, fmtVol, pad.axisFontSize)
   drawXLabels(ctx, series, i => pad.l + (N <= 1 ? 0 : (i / (N - 1)) * plotW), pad, plotH, pad.axisFontSize, plotW)
 
-  // Volume bars
-  const barW = Math.max(2, Math.floor(plotW / N) - 1)
+  // Volume bars -- barW must stay under the per-candle slot width or
+  // adjacent bars overlap (happens with e.g. 180 candles on a narrow
+  // mobile screen, where the slot itself is only ~1-2px wide).
+  const slot = plotW / N
+  const barW = Math.max(1, slot - 1)
   for (let i = 0; i < N; i++) {
-    const x    = pad.l + (plotW / N) * i + (plotW / N - barW) / 2
+    const x    = pad.l + slot * i + (slot - barW) / 2
     const yTop = yScale(volArr[i])
     const yBot = yScale(0)
     const h    = Math.max(reveal > 0 ? 1 : 0, (yBot - yTop) * reveal)

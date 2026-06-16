@@ -9,18 +9,20 @@
 // those, so without this the binary fails with "libnss3.so: cannot open
 // shared object file". Spoofing the var before the module loads forces it
 // down the same code path Lambda would take.
-if (!process.env.AWS_LAMBDA_JS_RUNTIME) {
-  process.env.AWS_LAMBDA_JS_RUNTIME = 'AWS_Lambda_nodejs20.x'
-}
-
-const chromium = (await import('@sparticuz/chromium')).default
-const puppeteer = (await import('puppeteer-core')).default
-
+//
+// The imports are dynamic (inside the handler, not top-level await) since
+// Vercel's bundler choked on a top-level `await import()`.
 const EMBED_URL = 'https://kendu-dashboard.com/embed/snapshot'
 
 export default async function handler(req, res) {
   let browser
   try {
+    if (!process.env.AWS_LAMBDA_JS_RUNTIME) {
+      process.env.AWS_LAMBDA_JS_RUNTIME = 'AWS_Lambda_nodejs20.x'
+    }
+    const chromium = (await import('@sparticuz/chromium')).default
+    const puppeteer = (await import('puppeteer-core')).default
+
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
