@@ -241,33 +241,36 @@
 
 .activityRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
 }
 
-/* Left column — left-aligned */
+/* Left column — left-aligned, equal width to right column so center sits at true midpoint */
 .activityCol {
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-items: flex-start;
+  flex: 1;
 }
 
-/* Center column — centered */
+/* Center column — centered, larger ratio stat */
 .activityColCenter {
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-items: center;
-  flex: 1;
+  flex: 0 0 auto;
+  padding: 0 14px;
 }
 
-/* Right column — right-aligned */
+/* Right column — right-aligned, equal width to left column */
 .activityColRight {
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-items: flex-end;
+  flex: 1;
 }
 
 .activityLabel {
@@ -300,6 +303,15 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.1;
+}
+
+.activityRatioVal {
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 800;
+  color: #F05C4E;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 /* ---- Footer ---- */
