@@ -44,6 +44,7 @@ export default function Calculator({ collapsed, onToggle }) {
   const [updatedTs,   setUpdatedTs]   = useState(null)
   const [selectedTierIdx, setSelectedTierIdx] = useState(-1)
   const [pinnedAddTokens, setPinnedAddTokens] = useState(null)  // exact tokens from tier click
+  const [tiersOpen, setTiersOpen] = useState(false)
 
   const loadSpot = useCallback(async () => {
     const url = IS_DEV
@@ -252,11 +253,14 @@ export default function Calculator({ collapsed, onToggle }) {
         </div>
       </div>
 
-      {/* Holder Tiers -- always visible */}
+      {/* Holder Tiers -- collapsible */}
       <div className={styles.tiersSection}>
-        <div className={styles.tiersHeader}>Holder Tiers</div>
+        <button className={styles.tiersToggle} onClick={() => setTiersOpen(o => !o)}>
+          <span className={`${styles.tiersChevron}${tiersOpen ? ` ${styles.tiersChevronOpen}` : ''}`}>▶</span>
+          Holder Tiers
+        </button>
 
-        {/* Tier summary bar -- shows when holdings entered */}
+        {/* Tier summary bar -- shows when holdings entered, even while collapsed */}
         {currentTierIdx >= 0 && (
           <div className={styles.tierBar}>
             {currentTierIdx === TIER_DEFS.length - 1
@@ -270,23 +274,27 @@ export default function Calculator({ collapsed, onToggle }) {
           </div>
         )}
 
-        <div className={styles.tiersGrid}>
-          {tiersOrdered.map(({ tier: t, origIdx: i }) => (
-            <div
-              key={t.name}
-  className={[
-                styles.tierCell,
-                i > currentTierIdx ? styles.tierClickable : '',
-                i === prospectIdx && i !== currentTierIdx ? styles.tierTarget : '',
-                i === currentTierIdx && i !== prospectIdx ? styles.tierCurrent : '',
-                i === currentTierIdx && i === prospectIdx ? styles.tierBoth   : '',
-              ].filter(Boolean).join(' ')}
-              onClick={() => handleTierClick(i)}
-            >
-              <span className={styles.tierName}>{t.name}</span>
-              <span className={styles.tierRange}>{fmtTierRange(t)}</span>
+        <div className={`${styles.tiersBody}${tiersOpen ? '' : ` ${styles.tiersBodyCollapsed}`}`}>
+          <div className={styles.tiersInner}>
+            <div className={styles.tiersGrid}>
+              {tiersOrdered.map(({ tier: t, origIdx: i }) => (
+                <div
+                  key={t.name}
+      className={[
+                    styles.tierCell,
+                    i > currentTierIdx ? styles.tierClickable : '',
+                    i === prospectIdx && i !== currentTierIdx ? styles.tierTarget : '',
+                    i === currentTierIdx && i !== prospectIdx ? styles.tierCurrent : '',
+                    i === currentTierIdx && i === prospectIdx ? styles.tierBoth   : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => handleTierClick(i)}
+                >
+                  <span className={styles.tierName}>{t.name}</span>
+                  <span className={styles.tierRange}>{fmtTierRange(t)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
 

@@ -95,7 +95,42 @@
 
 /* ---- Tiers section ---- */
 .tiersSection { display: flex; flex-direction: column; gap: 12px; }
-.tiersHeader  { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--fg); }
+
+.tiersToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tiersToggle:hover { color: var(--fg); }
+
+.tiersChevron {
+  font-size: 10px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.tiersChevronOpen { transform: rotate(90deg); }
+
+.tiersBody {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.32s cubic-bezier(.4,0,.2,1), opacity 0.22s ease;
+}
+.tiersBodyCollapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+.tiersInner { overflow: hidden; }
 
 .tierBar {
   padding: 10px 16px;
