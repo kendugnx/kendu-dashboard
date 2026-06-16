@@ -112,11 +112,23 @@
 .statHighlight .statVal { color: #fff; }
 
 @media (max-width: 640px) {
-  .controls { gap: 6px; }
-  .rightChips { display: none; }
+  .controls { gap: 8px; flex-direction: column; align-items: stretch; }
   .rangeInput { width: 90px; font-size: 11px; flex-shrink: 0; }
   .rangeChips { flex-wrap: nowrap; width: 100%; }
   .rangeChips > button { flex: 1; min-width: 0; padding: 8px 4px; font-size: 11px; }
+  .rightChips { display: flex; flex-direction: column; width: 100%; gap: 8px; }
+  .rightChips > button { order: 1; width: 100%; padding: 10px; font-size: 12px; }
+  .maChips {
+    order: 2;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: none;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+  }
+  .maChips.visible { max-height: 200px; opacity: 1; }
+  .maChips > button { flex: 1; min-width: 0; }
   .statsRow { flex-wrap: nowrap; gap: 4px; }
   .statPill {
     flex: 1;
