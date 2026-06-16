@@ -115,8 +115,11 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   const N        = series.length
   const totalArr = blendArr(series.map(r => r.total), tweenFrom?.total, tweenT)
-  const vals = series.map(r => r.total).filter(isFinite)
-  const yT   = niceTicks(Math.min(...vals), Math.max(...vals), 5)
+  // Exclude zeros (early CSV rows before tracking started) from the y-axis
+  // bounds so niceTicks doesn't floor all the way to 0 and crush the real
+  // growth curve into an invisible flat line at the bottom of the chart.
+  const vals = series.map(r => r.total).filter(v => isFinite(v) && v > 0)
+  const yT   = niceTicks(Math.min(...vals) * 0.98, Math.max(...vals), 5)
 
   const fontSize0 = W < 420 ? 11 : W < 640 ? 12 : 13
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
@@ -290,7 +293,6 @@ export default function HoldersChart({ collapsed, onToggle }) {
   const wrapRef   = useRef(null)
   const revealRef = useRef(0)
   const rafRef    = useRef(null)
-  const hasDataRef = useRef(false)
   const prevSpinningRef = useRef(false)
   const axisRevealRef = useRef(0)
   const axisRafRef    = useRef(null)
@@ -458,11 +460,16 @@ export default function HoldersChart({ collapsed, onToggle }) {
     rangeKeyRef.current = newKey
   }, [series, animateTween, range, customDays])
 
-  // Line grows up from the x-axis the first time data loads
+  // Line grows up from the x-axis once data arrives. Guards on revealRef
+  // instead of a hasDataRef bool: if reveal is already complete (≥0.99) or
+  // in-progress (>0), the animation doesn't restart on subsequent series
+  // changes (range switches, MC data arriving, StrictMode double-invoke…).
+  // Starting from the current revealRef value means a mid-flight reveal
+  // interrupted by StrictMode cleanup just resumes from where it left off.
   useEffect(() => {
-    if (series.length && !hasDataRef.current) {
-      hasDataRef.current = true
-      animateReveal(0, 1, 650)
+    if (series.length && revealRef.current < 0.99) {
+      const remaining = 1 - revealRef.current
+      animateReveal(revealRef.current, 1, Math.round(650 * remaining))
     }
   }, [series, animateReveal])
 
@@ -485,8 +492,13 @@ export default function HoldersChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
   }, [draw])
+
+  // Cancel the reveal RAF only on unmount — not on every draw re-creation,
+  // which was causing the reveal animation to be cancelled mid-flight whenever
+  // allMC data arrived and caused series/draw to regenerate.
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
   const handleMouseMove = useCallback(e => {
     const canvas = canvasRef.current
@@ -515,7 +527,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
   const toggleMA = n => setActiveMAs(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])
 
   const snapshotForTween = () => {
-    if (!hasDataRef.current) return
+    if (!series.length) return
     cancelAnimationFrame(tweenRafRef.current)
     tweenFromRef.current = {
       total: series.map(r => r.total),

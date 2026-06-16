@@ -371,8 +371,11 @@ export default function VolumeChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
   }, [draw])
+
+  // Cancel the reveal RAF only on unmount — not on every draw re-creation.
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
   const handleMouseMove = useCallback(e => {
     const canvas = canvasRef.current
