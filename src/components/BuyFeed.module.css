@@ -46,6 +46,7 @@
   gap: 4px;
   max-height: 480px;
   overflow-y: auto;
+  padding-right: 6px;
 }
 
 .row {
@@ -62,8 +63,8 @@
 }
 .row:hover { background: var(--surface-3); }
 
-.buy  { border-left: 3px solid var(--positive); }
-.sell { border-left: 3px solid var(--negative); }
+.buy  { border-left: 3px solid var(--positive); border-right: 3px solid var(--positive); }
+.sell { border-left: 3px solid var(--negative); border-right: 3px solid var(--negative); }
 
 .badge {
   font-size: 10px;
