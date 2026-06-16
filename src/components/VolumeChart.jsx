@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fmtUSD, fmtUpdated } from '../utils/index.js'
-import { niceTicks, responsivePad, drawYGrid, drawXLabels, blendArr, tweenBounds } from '../utils/chart.js'
+import { niceTicks, responsivePad, drawYGrid, drawXLabels, blendArr } from '../utils/chart.js'
 import { CIRC_SUPPLY } from '../utils/constants.js'
 import styles from './VolumeChart.module.css'
 
@@ -49,8 +49,8 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   const N        = series.length
   const volArr   = blendArr(series.map(r => r.vol), tweenFrom?.vol, tweenT)
   const priceArr = blendArr(series.map(r => r.price), tweenFrom?.price, tweenT)
-  const volBounds = tweenBounds(series.map(r => r.vol), tweenFrom?.vol, tweenT)
-  const yT   = niceTicks(0, volBounds.max * 1.08, 5)
+  const vols = series.map(r => r.vol)
+  const yT   = niceTicks(0, Math.max(...vols) * 1.08, 5)
 
   const fontSize0 = W < 420 ? 11 : 13
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,sans-serif`
@@ -89,12 +89,10 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
     // Convert price → MC
     const mcs = priceArr.map(p => p > 0 ? p * CIRC_SUPPLY : null)
     const validMCs = mcs.filter(v => v != null)
-    if (validMCs.length > 1) {
-      const newMCs = series.map(r => r.price > 0 ? r.price * CIRC_SUPPLY : NaN)
-      const oldMCs = tweenFrom?.price ? tweenFrom.price.map(p => p > 0 ? p * CIRC_SUPPLY : NaN) : null
-      const mcBounds = tweenBounds(newMCs, oldMCs, tweenT)
-      const minM = mcBounds.min
-      const maxM = mcBounds.max
+    const realMCs = series.map(r => r.price > 0 ? r.price * CIRC_SUPPLY : null).filter(v => v != null)
+    if (validMCs.length > 1 && realMCs.length > 1) {
+      const minM = Math.min(...realMCs)
+      const maxM = Math.max(...realMCs)
       const mRange = maxM - minM || maxM * 0.1
       const mScale = v => pad.t + plotH - ((v - minM) / mRange) * plotH
 
@@ -333,18 +331,12 @@ export default function VolumeChart({ collapsed, onToggle }) {
   }, [draw])
 
   // Bars/line tween from the old dataset to the new one when the date range changes.
-  // Dense ranges redraw too many points per frame to animate smoothly, so those
-  // snap instantly instead of janking.
-  const MAX_TWEEN_POINTS = 120
+  // Only the data positions animate -- the axis scale always reflects the new
+  // range immediately, it does not tween.
   useEffect(() => {
     const newKey = `${range}|${customDays}`
     if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
-      const oldLen = tweenFromRef.current.vol.length
-      if (series.length > MAX_TWEEN_POINTS || oldLen > MAX_TWEEN_POINTS) {
-        tweenFromRef.current = null
-      } else {
-        animateTween()
-      }
+      animateTween()
     }
     rangeKeyRef.current = newKey
   }, [series, animateTween, range, customDays])

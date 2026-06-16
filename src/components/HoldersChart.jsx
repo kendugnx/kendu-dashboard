@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fetchCSV, fmtNum, fmtUSD, fmtUpdated } from '../utils/index.js'
-import { niceTicks, responsivePad, drawYGrid, drawXLabels, drawLine, blendArr, tweenBounds } from '../utils/chart.js'
+import { niceTicks, responsivePad, drawYGrid, drawXLabels, drawLine, blendArr } from '../utils/chart.js'
 import { HOLDERS_CSV_URL, MC_CSV_URL, KENDU_ETH_CA } from '../utils/constants.js'
 import { API } from '../utils/apiBase.js'
 import styles from './HoldersChart.module.css'
@@ -115,8 +115,8 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   const N        = series.length
   const totalArr = blendArr(series.map(r => r.total), tweenFrom?.total, tweenT)
-  const totalBounds = tweenBounds(series.map(r => r.total), tweenFrom?.total, tweenT)
-  const yT   = niceTicks(totalBounds.min, totalBounds.max, 5)
+  const vals = series.map(r => r.total).filter(isFinite)
+  const yT   = niceTicks(Math.min(...vals), Math.max(...vals), 5)
 
   const fontSize0 = W < 420 ? 11 : W < 640 ? 12 : 13
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
@@ -136,9 +136,9 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
   let mcArr = null
   if (mcOn) {
     mcArr = blendArr(series.map(r => r.mc), tweenFrom?.mc, tweenT)
-    if (mcArr.some(isFinite)) {
-      const mcBounds = tweenBounds(series.map(r => r.mc), tweenFrom?.mc, tweenT)
-      yM = niceTicks(mcBounds.min, mcBounds.max, 5)
+    const mcVals = series.map(r => r.mc).filter(isFinite)
+    if (mcVals.length) {
+      yM = niceTicks(Math.min(...mcVals), Math.max(...mcVals), 5)
       yMScale = v => pad.t + plotH - ((v - yM.min) / (yM.max - yM.min || 1)) * plotH
     }
   }
@@ -448,18 +448,12 @@ export default function HoldersChart({ collapsed, onToggle }) {
   }, [draw])
 
   // Lines tween from the old dataset to the new one when the date range changes.
-  // Dense ranges (e.g. All-time, 1Y) redraw too many points per frame to animate
-  // smoothly, so those snap instantly instead of janking.
-  const MAX_TWEEN_POINTS = 120
+  // Only the data positions animate -- the axis scale always reflects the new
+  // range immediately, it does not tween.
   useEffect(() => {
     const newKey = `${range}|${customDays}`
     if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
-      const oldLen = tweenFromRef.current.total.length
-      if (series.length > MAX_TWEEN_POINTS || oldLen > MAX_TWEEN_POINTS) {
-        tweenFromRef.current = null
-      } else {
-        animateTween()
-      }
+      animateTween()
     }
     rangeKeyRef.current = newKey
   }, [series, animateTween, range, customDays])
