@@ -126,10 +126,10 @@
     grid-template-columns: minmax(0, 0fr) minmax(0, 1fr);
     align-items: center;
     width: 100%;
-    gap: 8px;
-    transition: grid-template-columns 0.3s ease;
+    gap: 0;
+    transition: grid-template-columns 0.3s ease, gap 0.3s ease;
   }
-  .rightChips.expanded { grid-template-columns: minmax(0, 1fr) minmax(0, 96px); }
+  .rightChips.expanded { grid-template-columns: minmax(0, 1fr) minmax(0, 96px); gap: 8px; }
   .rightChips > button {
     width: 100%;
     min-width: 0;
@@ -138,6 +138,8 @@
   }
   .maChips {
     display: flex;
+    justify-content: flex-end;
+    width: 100%;
     overflow: hidden;
     min-width: 0;
     opacity: 0;
