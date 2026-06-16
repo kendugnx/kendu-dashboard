@@ -174,25 +174,56 @@ async function getVolumeCandles(days) {
   const ohlcv = j?.data?.attributes?.ohlcv_list || []
   return [...ohlcv]
     .sort((a, b) => a[0] - b[0])
-    .map(([ts, , , , , vol]) => ({ date: new Date(ts * 1000), vol: Number(vol) }))
+    .map(([ts, , , , close, vol]) => ({ date: new Date(ts * 1000), vol: Number(vol), mc: Number(close) * SUPPLY }))
 }
 
-async function buildVolumeChartUrl(candles, rangeLabel) {
+// Nearest-date lookup used to overlay an MC line onto charts whose own data
+// points (CSV holder snapshots) don't share exact dates with the OHLCV-derived
+// MC series. Returns null (gap, chart skips it via spanGaps) past maxDiffDays.
+function nearestMc(series, targetDate, maxDiffDays = 2) {
+  let best = null, bestDiff = Infinity
+  for (const pt of series) {
+    const diff = Math.abs(pt.date - targetDate)
+    if (diff < bestDiff) { bestDiff = diff; best = pt }
+  }
+  return best && bestDiff <= maxDiffDays * 86400000 ? best.mc : null
+}
+
+async function buildVolumeChartUrl(candles, rangeLabel, opts = {}) {
   const title   = `Kendu Volume - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(candles.length / 40))
   const sampled = candles.filter((_, i) => i % step === 0 || i === candles.length - 1)
   const labels  = sampled.map(c => c.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
   const data    = sampled.map(c => c.vol)
 
+  const datasets = [{ label: 'Volume', data, backgroundColor: 'rgba(255,107,74,0.7)', yAxisID: 'y' }]
+  const yAxes = [{ id: 'y', position: 'left', ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }]
+
+  if (opts.overlayMc) {
+    datasets.push({
+      type: 'line',
+      label: 'Market Cap ($M)',
+      data: sampled.map(c => c.mc / 1e6),
+      borderColor: '#5AC8FA',
+      backgroundColor: 'rgba(90,200,250,0.15)',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false,
+      lineTension: 0.3,
+      yAxisID: 'y2',
+    })
+    yAxes.push({ id: 'y2', position: 'right', scaleLabel: { display: true, labelString: 'MC ($M)', fontColor: '#5AC8FA' }, ticks: { fontColor: '#5AC8FA', fontSize: 11 }, gridLines: { display: false } })
+  }
+
   const config = {
     type: 'bar',
-    data: { labels, datasets: [{ label: '', data, backgroundColor: 'rgba(255,107,74,0.7)' }] },
+    data: { labels, datasets },
     options: {
-      legend: { display: false },
+      legend: { display: !!opts.overlayMc, labels: { fontColor: '#ffffff' } },
       title: { display: true, text: title, fontColor: '#FF6B4A', fontSize: 14, fontStyle: 'bold' },
       scales: {
         xAxes: [{ ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
-        yAxes: [{ ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
+        yAxes,
       },
       layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
@@ -251,34 +282,54 @@ function parseRange(str) {
   return [days, `${n} ${n === 1 ? sing : plur}`]
 }
 
-async function buildChartUrl(rows, rangeLabel = 'All Time') {
+async function buildChartUrl(rows, rangeLabel = 'All Time', opts = {}) {
   const title   = `Kendu Holders - ${rangeLabel}`
   const step    = Math.max(1, Math.floor(rows.length / 40))
   const sampled = rows.filter((_, i) => i % step === 0 || i === rows.length - 1)
   const labels  = sampled.map(r => r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
   const data    = sampled.map(r => r.total)
 
+  const datasets = [{
+    label: 'Holders',
+    data,
+    borderColor: '#FF6B4A',
+    backgroundColor: 'rgba(255,107,74,0.2)',
+    borderWidth: 3,
+    pointRadius: 0,
+    fill: true,
+    lineTension: 0.3,
+    yAxisID: 'y',
+  }]
+  const yAxes = [{ id: 'y', position: 'left', ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }]
+
+  if (opts.mcSeries?.length) {
+    datasets.push({
+      label: 'Market Cap ($M)',
+      data: sampled.map(r => {
+        const mc = nearestMc(opts.mcSeries, r.date)
+        return mc == null ? null : mc / 1e6
+      }),
+      borderColor: '#5AC8FA',
+      backgroundColor: 'rgba(90,200,250,0.15)',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false,
+      lineTension: 0.3,
+      yAxisID: 'y2',
+      spanGaps: true,
+    })
+    yAxes.push({ id: 'y2', position: 'right', scaleLabel: { display: true, labelString: 'MC ($M)', fontColor: '#5AC8FA' }, ticks: { fontColor: '#5AC8FA', fontSize: 11 }, gridLines: { display: false } })
+  }
+
   const config = {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: '',
-        data,
-        borderColor: '#FF6B4A',
-        backgroundColor: 'rgba(255,107,74,0.2)',
-        borderWidth: 3,
-        pointRadius: 0,
-        fill: true,
-        lineTension: 0.3,
-      }]
-    },
+    data: { labels, datasets },
     options: {
-      legend: { display: false },
+      legend: { display: !!opts.mcSeries?.length, labels: { fontColor: '#ffffff' } },
       title: { display: true, text: title, fontColor: '#FF6B4A', fontSize: 14, fontStyle: 'bold' },
       scales: {
         xAxes: [{ ticks: { fontColor: '#ffffff', maxTicksLimit: 5, maxRotation: 0, fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
-        yAxes: [{ ticks: { fontColor: '#ffffff', fontSize: 11 }, gridLines: { color: 'rgba(255,255,255,0.15)' } }],
+        yAxes,
       },
       layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
     }
@@ -340,6 +391,8 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
+      const wantsPrice = parts[parts.length - 1] === 'price'
+      if (wantsPrice) parts.pop()
       const [rangeDays, rangeLabel] = parseRange(parts[0])
 
       const rows = await fetchHoldersCSV()
@@ -370,7 +423,14 @@ export default async function handler(req, res) {
         `Sol: ${isFinite(latest.sol) && latest.sol > 0 ? latest.sol.toLocaleString() : '—'}` +
         deltaLine
 
-      const chartUrl = await buildChartUrl(rangeRows, rangeLabel)
+      let mcSeries = null
+      if (wantsPrice) {
+        const spanDays = Math.ceil((Date.now() - rangeRows[0].date.getTime()) / 86400000) + 2
+        const mcDays = Math.min(365, Math.max(7, rangeDays || spanDays))
+        mcSeries = await getVolumeCandles(mcDays).catch(() => [])
+      }
+
+      const chartUrl = await buildChartUrl(rangeRows, rangeLabel, { mcSeries })
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/gas') || text.startsWith('/gwei')) {
@@ -388,6 +448,8 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/volume')) {
       const parts = text.split(/\s+/).slice(1)
+      const wantsPrice = parts[parts.length - 1] === 'price'
+      if (wantsPrice) parts.pop()
       const [rangeDays, rangeLabel] = parseRange(parts[0])
       const days = Math.min(365, Math.max(7, rangeDays || 90))
 
@@ -401,7 +463,7 @@ export default async function handler(req, res) {
         `24H: ${fmt(total24h)}\n` +
         `Total: ${fmt(totalRange)}`
 
-      const chartUrl = await buildVolumeChartUrl(candles, rangeLabel)
+      const chartUrl = await buildVolumeChartUrl(candles, rangeLabel, { overlayMc: wantsPrice })
       await sendPhoto(chatId, chartUrl, caption)
 
     } else if (text.startsWith('/snapshot')) {
