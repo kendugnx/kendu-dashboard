@@ -112,7 +112,34 @@ export function drawLine(ctx, xs, ys, xScale, yScale, color = '#F05C4E', width =
   ctx.stroke()
 }
 
-// ---- Draw candlestick bar ---- 
+// ---- Resample an array of numbers onto a new length via linear interpolation ----
+export function resampleArr(oldArr, newLen) {
+  if (!oldArr || !oldArr.length) return new Array(newLen).fill(NaN)
+  if (oldArr.length === 1 || newLen <= 1) return new Array(newLen).fill(oldArr[oldArr.length - 1])
+  return Array.from({ length: newLen }, (_, i) => {
+    const p   = i / (newLen - 1)
+    const idx = p * (oldArr.length - 1)
+    const i0  = Math.floor(idx), i1 = Math.min(oldArr.length - 1, i0 + 1)
+    const frac = idx - i0
+    const a = oldArr[i0], b = oldArr[i1]
+    if (!isFinite(a)) return b
+    if (!isFinite(b)) return a
+    return a + (b - a) * frac
+  })
+}
+
+// ---- Blend a new value array toward its previous (differently-sized) snapshot ----
+export function blendArr(newArr, oldArr, t) {
+  if (!oldArr || !oldArr.length || t >= 1) return newArr
+  const resampled = resampleArr(oldArr, newArr.length)
+  return newArr.map((v, i) => {
+    const o = resampled[i]
+    if (!isFinite(o) || !isFinite(v)) return v
+    return o + (v - o) * t
+  })
+}
+
+// ---- Draw candlestick bar ----
 export function drawBar(ctx, x, open, close, high, low, width = 4) {
   const isUp  = close >= open
   const color = isUp ? '#24c65b' : '#ff5e57'

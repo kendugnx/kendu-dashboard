@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fmtUSD, fmtUpdated } from '../utils/index.js'
-import { niceTicks, responsivePad, drawYGrid, drawXLabels } from '../utils/chart.js'
+import { niceTicks, responsivePad, drawYGrid, drawXLabels, blendArr } from '../utils/chart.js'
 import { CIRC_SUPPLY } from '../utils/constants.js'
 import styles from './VolumeChart.module.css'
 
@@ -43,12 +43,13 @@ function movingAvgPrice(rows, n) {
   })
 }
 
-function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice, reveal = 1, axisReveal = showPrice ? 1 : 0) {
+function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice, reveal = 1, axisReveal = showPrice ? 1 : 0, tweenFrom = null, tweenT = 1) {
   if (!series.length) return
 
-  const N    = series.length
-  const vols = series.map(r => r.vol)
-  const yT   = niceTicks(0, Math.max(...vols) * 1.08, 5)
+  const N        = series.length
+  const volArr   = blendArr(series.map(r => r.vol), tweenFrom?.vol, tweenT)
+  const priceArr = blendArr(series.map(r => r.price), tweenFrom?.price, tweenT)
+  const yT   = niceTicks(0, Math.max(...volArr) * 1.08, 5)
 
   const fontSize0 = W < 420 ? 11 : 13
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,sans-serif`
@@ -70,7 +71,7 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   const barW = Math.max(2, Math.floor(plotW / N) - 1)
   for (let i = 0; i < N; i++) {
     const x    = pad.l + (plotW / N) * i + (plotW / N - barW) / 2
-    const yTop = yScale(series[i].vol)
+    const yTop = yScale(volArr[i])
     const yBot = yScale(0)
     const h    = Math.max(reveal > 0 ? 1 : 0, (yBot - yTop) * reveal)
     ctx.fillStyle = i === tooltipIdx ? '#F05C4E' : 'rgba(240, 92, 78, 0.55)'
@@ -85,7 +86,7 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
     ctx.save()
     ctx.globalAlpha = axisReveal
     // Convert price → MC
-    const mcs = series.map(r => r.price > 0 ? r.price * CIRC_SUPPLY : null)
+    const mcs = priceArr.map(p => p > 0 ? p * CIRC_SUPPLY : null)
     const validMCs = mcs.filter(v => v != null)
     if (validMCs.length > 1) {
       const minM = Math.min(...validMCs)
@@ -96,8 +97,8 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
       // MA lines (on MC scale)
       const maColors = { 9: '#a78bfa', 26: '#38bdf8', 50: '#fb923c', 200: '#f43f5e' }
       for (const n of activeMAs) {
-        const maVals = maLines[n]  // already in price; convert to MC inline
-        if (!maVals) continue
+        if (!maLines[n]) continue
+        const maVals = blendArr(maLines[n], tweenFrom?.ma?.[n], tweenT)  // already in price; convert to MC inline
         ctx.strokeStyle = maColors[n] || '#888'
         ctx.lineWidth = 1.5
         ctx.setLineDash([])
@@ -210,6 +211,10 @@ export default function VolumeChart({ collapsed, onToggle }) {
   const axisRevealRef = useRef(0)
   const axisRafRef    = useRef(null)
   const prevShowPriceRef = useRef(false)
+  const tweenFromRef = useRef(null)
+  const tweenTRef    = useRef(1)
+  const tweenRafRef  = useRef(null)
+  const rangeKeyRef  = useRef(null)
 
   const fetchVolume = useCallback(async () => {
     const r = await fetch('/api/volume?days=180')
@@ -268,7 +273,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice, revealRef.current, axisRevealRef.current)
+    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice, revealRef.current, axisRevealRef.current, tweenFromRef.current, tweenTRef.current)
   }, [series, maLines, activeMAs, tooltipIdx, showPrice])
 
   const animateReveal = useCallback((from, to, duration) => {
@@ -305,6 +310,33 @@ export default function VolumeChart({ collapsed, onToggle }) {
     }
   }, [showPrice, animateAxis])
 
+  const animateTween = useCallback(() => {
+    cancelAnimationFrame(tweenRafRef.current)
+    tweenTRef.current = 0
+    const start = performance.now()
+    const duration = 500
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      tweenTRef.current = 1 - Math.pow(1 - t, 3)
+      draw()
+      if (t < 1) {
+        tweenRafRef.current = requestAnimationFrame(step)
+      } else {
+        tweenFromRef.current = null
+      }
+    }
+    tweenRafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Bars/line tween from the old dataset to the new one when the date range changes
+  useEffect(() => {
+    const newKey = `${range}|${customDays}`
+    if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
+      animateTween()
+    }
+    rangeKeyRef.current = newKey
+  }, [series, animateTween, range, customDays])
+
   // Bars/line grow up from the x-axis the first time data loads
   useEffect(() => {
     if (series.length && !hasDataRef.current) {
@@ -332,7 +364,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {
@@ -355,13 +387,24 @@ export default function VolumeChart({ collapsed, onToggle }) {
 
   const toggleMA = n => setActiveMAs(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])
 
+  const snapshotForTween = () => {
+    if (!hasDataRef.current) return
+    tweenFromRef.current = {
+      vol:   series.map(r => r.vol),
+      price: series.map(r => r.price),
+      ma:    Object.fromEntries(MA_OPTS.map(n => [n, maLines[n]])),
+    }
+  }
+
   const handleCustomSubmit = e => {
     if (e.key === 'Enter' || e.type === 'blur') {
       const days = parseCustomRange(customInput)
       if (days) {
+        snapshotForTween()
         setCustomDays(Math.min(days, 180))
         setRange('')
       } else if (!customInput.trim()) {
+        snapshotForTween()
         setCustomDays(null)
         if (!range) setRange('90D')
       }
@@ -369,6 +412,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
   }
 
   const handleRangeChip = r => {
+    snapshotForTween()
     setRange(r === range && customDays == null ? '90D' : r)
     setCustomDays(null)
     setCustomInput('')

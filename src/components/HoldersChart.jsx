@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fetchCSV, fmtNum, fmtUSD, fmtUpdated } from '../utils/index.js'
-import { niceTicks, responsivePad, drawYGrid, drawXLabels, drawLine } from '../utils/chart.js'
+import { niceTicks, responsivePad, drawYGrid, drawXLabels, drawLine, blendArr } from '../utils/chart.js'
 import { HOLDERS_CSV_URL, MC_CSV_URL, KENDU_ETH_CA } from '../utils/constants.js'
 import { API } from '../utils/apiBase.js'
 import styles from './HoldersChart.module.css'
@@ -110,11 +110,12 @@ function joinByDate(holdRows, mcRows) {
 }
 
 // ---- Canvas draw ----
-function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, reveal = 1, axisReveal = showMC ? 1 : 0) {
+function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, reveal = 1, axisReveal = showMC ? 1 : 0, tweenFrom = null, tweenT = 1) {
   if (!series.length) return
 
-  const N    = series.length
-  const vals = series.map(r => r.total).filter(isFinite)
+  const N        = series.length
+  const totalArr = blendArr(series.map(r => r.total), tweenFrom?.total, tweenT)
+  const vals     = totalArr.filter(isFinite)
   const yT   = niceTicks(Math.min(...vals), Math.max(...vals), 5)
 
   const fontSize0 = W < 420 ? 11 : W < 640 ? 12 : 13
@@ -132,8 +133,10 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   let yMScale = null
   let yM = null
+  let mcArr = null
   if (mcOn) {
-    const mcVals = series.map(r => r.mc).filter(isFinite)
+    mcArr = blendArr(series.map(r => r.mc), tweenFrom?.mc, tweenT)
+    const mcVals = mcArr.filter(isFinite)
     if (mcVals.length) {
       yM = niceTicks(Math.min(...mcVals), Math.max(...mcVals), 5)
       yMScale = v => pad.t + plotH - ((v - yM.min) / (yM.max - yM.min || 1)) * plotH
@@ -168,7 +171,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
     ctx.save()
     ctx.globalAlpha = axisReveal
     const mcPts = series
-      .map((r, i) => isFinite(r.mc) ? { x: xScale(i), y: rY(yMScale(r.mc)), mc: r.mc } : null)
+      .map((r, i) => isFinite(mcArr[i]) ? { x: xScale(i), y: rY(yMScale(mcArr[i])), mc: mcArr[i] } : null)
       .filter(Boolean)
     if (mcPts.length > 1) {
       ctx.beginPath()
@@ -193,11 +196,10 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
       ctx.stroke()
     }
     if (tooltipIdx != null && tooltipIdx >= 0 && tooltipIdx < N) {
-      const r = series[tooltipIdx]
-      if (isFinite(r.mc)) {
-        const prev = series.slice(0, tooltipIdx).reverse().find(s => isFinite(s.mc))
-        const dotColor = prev ? (r.mc >= prev.mc ? '#24c65b' : '#ff5e57') : '#24c65b'
-        const xd = xScale(tooltipIdx), yd = rY(yMScale(r.mc))
+      if (isFinite(mcArr[tooltipIdx])) {
+        const prevIdx = mcArr.slice(0, tooltipIdx).map((v, i) => [v, i]).reverse().find(([v]) => isFinite(v))
+        const dotColor = prevIdx ? (mcArr[tooltipIdx] >= prevIdx[0] ? '#24c65b' : '#ff5e57') : '#24c65b'
+        const xd = xScale(tooltipIdx), yd = rY(yMScale(mcArr[tooltipIdx]))
         const isLightDot = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
         ctx.fillStyle = isLightDot ? '#FFFFFF' : '#E6EDF3'
         ctx.strokeStyle = dotColor
@@ -213,8 +215,8 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   // MA lines
   for (const n of activeMAs) {
-    const maVals = maLines[n]
-    if (!maVals) continue
+    if (!maLines[n]) continue
+    const maVals = blendArr(maLines[n], tweenFrom?.ma?.[n], tweenT)
     const scaleY = (mcOn && yMScale) ? yMScale : yTScale
     const colors = { 9: '#a78bfa', 26: '#38bdf8', 50: '#fb923c', 200: '#f43f5e' }
     ctx.strokeStyle = colors[n] || '#888'
@@ -233,7 +235,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   // Holders line
   {
-    const pts = series.map((r, i) => ({ x: xScale(i), y: rY(yTScale(r.total)) }))
+    const pts = totalArr.map((v, i) => ({ x: xScale(i), y: rY(yTScale(v)) }))
     ctx.strokeStyle = '#F05C4E'
     ctx.lineWidth = 3
     ctx.setLineDash([])
@@ -261,7 +263,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
     ctx.stroke()
     ctx.setLineDash([])
 
-    const y = rY(yTScale(series[tooltipIdx].total))
+    const y = rY(yTScale(totalArr[tooltipIdx]))
     if (isFinite(y)) {
       ctx.fillStyle = '#F05C4E'
       ctx.beginPath()
@@ -293,6 +295,10 @@ export default function HoldersChart({ collapsed, onToggle }) {
   const axisRevealRef = useRef(0)
   const axisRafRef    = useRef(null)
   const prevShowMCRef  = useRef(false)
+  const tweenFromRef = useRef(null)
+  const tweenTRef    = useRef(1)
+  const tweenRafRef  = useRef(null)
+  const rangeKeyRef  = useRef(null)
 
   const series = useMemo(() => {
     const filtered = customDays != null
@@ -384,7 +390,9 @@ export default function HoldersChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx, revealRef.current, axisRevealRef.current)
+    const tf = tweenFromRef.current
+    const tweenFromForDraw = tf ? { total: tf.total, mc: tf.mc, ma: showMC ? tf.maMC : tf.ma } : null
+    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx, revealRef.current, axisRevealRef.current, tweenFromForDraw, tweenTRef.current)
   }, [series, maLines, maMCLines, activeMAs, showMC, tooltipIdx])
 
   const animateReveal = useCallback((from, to, duration) => {
@@ -421,6 +429,33 @@ export default function HoldersChart({ collapsed, onToggle }) {
     }
   }, [showMC, animateAxis])
 
+  const animateTween = useCallback(() => {
+    cancelAnimationFrame(tweenRafRef.current)
+    tweenTRef.current = 0
+    const start = performance.now()
+    const duration = 500
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      tweenTRef.current = 1 - Math.pow(1 - t, 3)
+      draw()
+      if (t < 1) {
+        tweenRafRef.current = requestAnimationFrame(step)
+      } else {
+        tweenFromRef.current = null
+      }
+    }
+    tweenRafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Lines tween from the old dataset to the new one when the date range changes
+  useEffect(() => {
+    const newKey = `${range}|${customDays}`
+    if (rangeKeyRef.current !== null && rangeKeyRef.current !== newKey && tweenFromRef.current) {
+      animateTween()
+    }
+    rangeKeyRef.current = newKey
+  }, [series, animateTween, range, customDays])
+
   // Line grows up from the x-axis the first time data loads
   useEffect(() => {
     if (series.length && !hasDataRef.current) {
@@ -448,7 +483,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current); cancelAnimationFrame(tweenRafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {
@@ -477,13 +512,25 @@ export default function HoldersChart({ collapsed, onToggle }) {
 
   const toggleMA = n => setActiveMAs(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])
 
+  const snapshotForTween = () => {
+    if (!hasDataRef.current) return
+    tweenFromRef.current = {
+      total: series.map(r => r.total),
+      mc:    series.map(r => r.mc),
+      ma:    Object.fromEntries(MA_OPTS.map(n => [n, maLines[n]])),
+      maMC:  Object.fromEntries(MA_OPTS.map(n => [n, maMCLines[n]])),
+    }
+  }
+
   const handleCustomSubmit = e => {
     if (e.key === 'Enter' || e.type === 'blur') {
       const days = parseCustomRange(customInput)
       if (days) {
+        snapshotForTween()
         setCustomDays(days)
         setRange('')
       } else if (!customInput.trim()) {
+        snapshotForTween()
         setCustomDays(null)
         if (!range) setRange('All')
       }
@@ -491,6 +538,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
   }
 
   const handleRangeChip = r => {
+    snapshotForTween()
     setRange(r === range && customDays == null ? 'All' : r)
     setCustomDays(null)
     setCustomInput('')
