@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
 import { fmtUSD, fmtUpdated } from '../utils/index.js'
-import { niceTicks, responsivePad, drawYGrid, drawXLabels, blendArr } from '../utils/chart.js'
+import { niceTicks, responsivePad, drawYGrid, drawXLabels, blendArr, tweenBounds } from '../utils/chart.js'
 import { CIRC_SUPPLY } from '../utils/constants.js'
 import styles from './VolumeChart.module.css'
 
@@ -49,7 +49,8 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   const N        = series.length
   const volArr   = blendArr(series.map(r => r.vol), tweenFrom?.vol, tweenT)
   const priceArr = blendArr(series.map(r => r.price), tweenFrom?.price, tweenT)
-  const yT   = niceTicks(0, Math.max(...volArr) * 1.08, 5)
+  const volBounds = tweenBounds(series.map(r => r.vol), tweenFrom?.vol, tweenT)
+  const yT   = niceTicks(0, volBounds.max * 1.08, 5)
 
   const fontSize0 = W < 420 ? 11 : 13
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,sans-serif`
@@ -89,8 +90,11 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
     const mcs = priceArr.map(p => p > 0 ? p * CIRC_SUPPLY : null)
     const validMCs = mcs.filter(v => v != null)
     if (validMCs.length > 1) {
-      const minM = Math.min(...validMCs)
-      const maxM = Math.max(...validMCs)
+      const newMCs = series.map(r => r.price > 0 ? r.price * CIRC_SUPPLY : NaN)
+      const oldMCs = tweenFrom?.price ? tweenFrom.price.map(p => p > 0 ? p * CIRC_SUPPLY : NaN) : null
+      const mcBounds = tweenBounds(newMCs, oldMCs, tweenT)
+      const minM = mcBounds.min
+      const maxM = mcBounds.max
       const mRange = maxM - minM || maxM * 0.1
       const mScale = v => pad.t + plotH - ((v - minM) / mRange) * plotH
 
@@ -389,11 +393,13 @@ export default function VolumeChart({ collapsed, onToggle }) {
 
   const snapshotForTween = () => {
     if (!hasDataRef.current) return
+    cancelAnimationFrame(tweenRafRef.current)
     tweenFromRef.current = {
       vol:   series.map(r => r.vol),
       price: series.map(r => r.price),
       ma:    Object.fromEntries(MA_OPTS.map(n => [n, maLines[n]])),
     }
+    tweenTRef.current = 0
   }
 
   const handleCustomSubmit = e => {

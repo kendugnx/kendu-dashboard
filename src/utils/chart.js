@@ -128,6 +128,22 @@ export function resampleArr(oldArr, newLen) {
   })
 }
 
+// ---- Smoothly interpolate axis bounds from an old value array's range to a new one's ----
+export function tweenBounds(newVals, oldVals, t, fallbackMin = 0) {
+  const finiteNew = newVals.filter(isFinite)
+  const newMin = finiteNew.length ? Math.min(...finiteNew) : fallbackMin
+  const newMax = finiteNew.length ? Math.max(...finiteNew) : fallbackMin
+  if (!oldVals || t >= 1) return { min: newMin, max: newMax }
+  const finiteOld = oldVals.filter(isFinite)
+  if (!finiteOld.length) return { min: newMin, max: newMax }
+  const oldMin = Math.min(...finiteOld)
+  const oldMax = Math.max(...finiteOld)
+  return {
+    min: oldMin + (newMin - oldMin) * t,
+    max: oldMax + (newMax - oldMax) * t,
+  }
+}
+
 // ---- Blend a new value array toward its previous (differently-sized) snapshot ----
 export function blendArr(newArr, oldArr, t) {
   if (!oldArr || !oldArr.length || t >= 1) return newArr
