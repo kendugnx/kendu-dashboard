@@ -138,10 +138,18 @@
   align-items: stretch;
 }
 
+.threeCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
 @media (max-width: 640px) {
   .header { padding: 20px 0 12px; }
   .headerLeft  { left: 12px; }
   .headerRight { right: 12px; }
   .main   { padding: 0 12px 32px; gap: 12px; }
   .twoCol { grid-template-columns: 1fr; gap: 12px; }
+  .threeCol { grid-template-columns: 1fr; gap: 12px; }
 }

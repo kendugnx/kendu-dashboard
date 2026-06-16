@@ -37,7 +37,7 @@ export default function App() {
   const { order, handleDragEnd, resetOrder } = useSortableOrder(isMobile)
   const [showSnapshot, setShowSnapshot] = useState(false)
 
-  const ALL_KEYS = ['network', 'chart', 'holderPair', 'milestone', 'composition', 'concentration', 'treasury', 'wallet', 'calculator', 'impact', 'volume', 'feedPair', 'feed', 'board', 'links']
+  const ALL_KEYS = ['network', 'chart', 'holderTrio', 'milestone', 'composition', 'concentration', 'treasury', 'wallet', 'calculator', 'impact', 'volume', 'feedPair', 'feed', 'board', 'links']
 
   const [c, setC] = useState(() => Object.fromEntries(ALL_KEYS.map(k => [k, false])))
   const toggle = key => setC(prev => ({ ...prev, [key]: !prev[key] }))
@@ -45,10 +45,12 @@ export default function App() {
   const allCollapsed = ALL_KEYS.every(k => c[k])
   const toggleAll = () => setC(Object.fromEntries(ALL_KEYS.map(k => [k, !allCollapsed])))
 
-  const milestoneCollapsed   = isMobile ? c.milestone   : c.holderPair
-  const compositionCollapsed = isMobile ? c.composition : c.holderPair
-  const milestoneToggle   = () => toggle(isMobile ? 'milestone'   : 'holderPair')
-  const compositionToggle = () => toggle(isMobile ? 'composition' : 'holderPair')
+  const concentrationCollapsed = isMobile ? c.concentration : c.holderTrio
+  const milestoneCollapsed     = isMobile ? c.milestone     : c.holderTrio
+  const compositionCollapsed   = isMobile ? c.composition   : c.holderTrio
+  const concentrationToggle = () => toggle(isMobile ? 'concentration' : 'holderTrio')
+  const milestoneToggle     = () => toggle(isMobile ? 'milestone'     : 'holderTrio')
+  const compositionToggle   = () => toggle(isMobile ? 'composition'   : 'holderTrio')
 
   const boardCollapsed = isMobile ? c.board : c.feedPair
   const feedCollapsed  = isMobile ? c.feed  : c.feedPair
@@ -65,9 +67,10 @@ export default function App() {
   const rowContent = {
     network:    <section className={styles.fullRow}><NetworkPulse collapsed={c.network} onToggle={() => toggle('network')} /></section>,
     chart:      <section className={styles.fullRow}><HoldersChart collapsed={c.chart} onToggle={() => toggle('chart')} /></section>,
-    holderPair: <section className={styles.twoCol}>
-                  <HolderMilestone   collapsed={milestoneCollapsed}   onToggle={milestoneToggle} />
-                  <HolderComposition collapsed={compositionCollapsed} onToggle={compositionToggle} />
+    holderTrio: <section className={styles.threeCol}>
+                  <HolderConcentration collapsed={concentrationCollapsed} onToggle={concentrationToggle} />
+                  <HolderMilestone     collapsed={milestoneCollapsed}     onToggle={milestoneToggle} />
+                  <HolderComposition   collapsed={compositionCollapsed}   onToggle={compositionToggle} />
                 </section>,
     milestone:  <section className={styles.fullRow}><HolderMilestone   collapsed={c.milestone}   onToggle={() => toggle('milestone')} /></section>,
     composition:<section className={styles.fullRow}><HolderComposition collapsed={c.composition} onToggle={() => toggle('composition')} /></section>,

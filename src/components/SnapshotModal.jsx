@@ -259,7 +259,7 @@ export default function SnapshotModal({ onClose }) {
                 <div className={styles.hhiRow}>
                   <span className={styles.hhiLabel}>HHI CONCENTRATION</span>
                   <span className={styles.hhiVal}>
-                    {stats.hhi.toFixed(0)} <span className={styles.hhiTag}>{hhiLabel(stats.hhi)}</span>
+                    {stats.hhi.toFixed(0)}<span className={styles.hhiDenom}>/10,000</span> <span className={styles.hhiTag}>{hhiLabel(stats.hhi)}</span>
                   </span>
                 </div>
               )}

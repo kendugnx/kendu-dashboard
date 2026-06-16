@@ -6,6 +6,8 @@ import { fmtUpdated, computeHHI, hhiLabel } from '../utils/index.js'
 import { HHI_EXCLUDED_ADDRESSES } from '../utils/constants.js'
 import styles from './HolderConcentration.module.css'
 
+const HHI_MAX = 10000
+
 export default function HolderConcentration({ collapsed, onToggle }) {
   const [holders,   setHolders]   = useState(null)
   const [updatedTs, setUpdatedTs] = useState(null)
@@ -19,22 +21,21 @@ export default function HolderConcentration({ collapsed, onToggle }) {
   const { spinning, trigger } = useRefresh(loadData)
   useEffect(() => { loadData() }, [])
 
-  const excludeSet = new Set(HHI_EXCLUDED_ADDRESSES)
-  const realHolders = holders ? holders.filter(h => !excludeSet.has(String(h.address).toLowerCase())) : null
-
   const hhi   = holders ? computeHHI(holders, HHI_EXCLUDED_ADDRESSES) : null
   const label = hhiLabel(hhi)
-  const top5  = realHolders ? realHolders.slice(0, 5) : []
+  const frac  = hhi != null ? Math.min(1, Math.max(0, hhi / HHI_MAX)) : 0
+
+  // SVG ring
+  const RADIUS = 80
+  const CIRC   = 2 * Math.PI * RADIUS
+  const offset = CIRC * (1 - frac)
 
   return (
     <div className={`k-card ${styles.wrap}`}>
       <div className={styles.head}>
         <div>
           <div className="k-eyebrow">Holder Concentration</div>
-          <div className={styles.hhiNum}>
-            {hhi != null ? hhi.toFixed(0) : '—'}
-            {hhi != null && <span className={styles.hhiTag}>{label}</span>}
-          </div>
+          <div className={styles.hhiNum}>{hhi != null ? hhi.toFixed(0) : '—'}</div>
         </div>
         <div className="k-head-actions">
           <RefreshButton spinning={spinning} onClick={trigger} />
@@ -43,19 +44,30 @@ export default function HolderConcentration({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
-        <div className={styles.explainer}>HHI (Herfindahl-Hirschman Index), based on the top 100 ETH holders' share of supply. Lower means more distributed.</div>
-
-        {top5.length > 0 && (
-          <div className={styles.top5}>
-            {top5.map((h, i) => (
-              <div key={h.address} className={styles.top5Row}>
-                <span className={styles.top5Rank}>#{i + 1}</span>
-                <span className={styles.top5Addr}>{h.ens || (h.address.slice(0, 6) + '…' + h.address.slice(-4))}</span>
-                <span className={styles.top5Share}>{Number(h.share).toFixed(2)}%</span>
-              </div>
-            ))}
+        <div className={styles.ringArea}>
+          <div className={styles.ringWrap}>
+            <svg className={styles.ring} viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r={RADIUS} fill="none" stroke="rgba(240,92,78,.2)" strokeWidth="12" />
+              <circle
+                cx="100" cy="100" r={RADIUS}
+                fill="none"
+                stroke="#F05C4E"
+                strokeWidth="12"
+                strokeLinecap="butt"
+                strokeDasharray={CIRC}
+                strokeDashoffset={offset}
+                transform="rotate(-90 100 100)"
+                style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.22,.61,.36,1)' }}
+              />
+            </svg>
+            <div className={styles.ringCenter}>
+              <div className={styles.ringNum}>{hhi != null ? hhi.toFixed(0) : '—'}<span className={styles.ringDenom}>/{HHI_MAX.toLocaleString()}</span></div>
+              <div className={styles.ringSub}>{label} Concentration</div>
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className={styles.explainer}>HHI score based on the top 100 ETH holders, excluding bridges, liquidity pools, and exchange wallets.</div>
 
         <div className="k-foot">{fmtUpdated(updatedTs)}</div>
       </div></div>

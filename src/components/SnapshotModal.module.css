@@ -242,6 +242,7 @@
 }
 .hhiLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: #9E9399; }
 .hhiVal { font-family: var(--font-title); font-size: 14px; font-weight: 800; color: #E8E6EE; }
+.hhiDenom { font-size: 11px; font-weight: 600; color: #9E9399; }
 .hhiTag { font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #9E9399; }
 
 /* ---- Activity section ---- */

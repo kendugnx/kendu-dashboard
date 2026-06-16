@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
 
-export const DESKTOP_ORDER = ['network', 'chart', 'holderPair', 'concentration', 'volume', 'feedPair', 'treasury', 'wallet', 'calculator', 'impact', 'links']
+export const DESKTOP_ORDER = ['network', 'chart', 'holderTrio', 'volume', 'feedPair', 'treasury', 'wallet', 'calculator', 'impact', 'links']
 export const MOBILE_ORDER  = ['network', 'chart', 'milestone', 'composition', 'concentration', 'volume', 'board', 'feed', 'treasury', 'wallet', 'calculator', 'impact', 'links']
 
 function load(key, fallback) {
