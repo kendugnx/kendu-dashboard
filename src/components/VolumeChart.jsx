@@ -335,7 +335,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
             >{r}</button>
           ))}
         </div>
-        <div className={styles.rightChips}>
+        <div className={`${styles.rightChips} ${showPrice ? styles.expanded : ''}`}>
           <div className={`${styles.maChips} ${showPrice ? styles.visible : ''}`}>
             <div className={styles.maChipsInner}>
               {MA_OPTS.map(n => (

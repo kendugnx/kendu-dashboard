@@ -456,7 +456,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
             >{r}</button>
           ))}
         </div>
-        <div className={styles.rightChips}>
+        <div className={`${styles.rightChips} ${showMC ? styles.expanded : ''}`}>
           <div className={`${styles.maChips} ${showMC ? styles.visible : ''}`}>
             <div className={styles.maChipsInner}>
               {MA_OPTS.map(n => (

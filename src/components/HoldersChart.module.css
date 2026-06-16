@@ -116,34 +116,37 @@
   .rangeInput { width: 90px; font-size: 11px; flex-shrink: 0; }
   .rangeChips { flex-wrap: nowrap; width: 100%; }
   .rangeChips > button { flex: 1; min-width: 0; padding: 8px 4px; font-size: 11px; }
-  .rightChips { display: flex; flex-wrap: wrap; align-items: center; width: 100%; gap: 8px; }
+  /* Single grid row: Chart button column + MA chips column. The row's
+     height is fixed by grid sizing regardless of column width, and the
+     MA buttons keep a constant size and are simply revealed/clipped as
+     their column widens -- same mechanism as the desktop version, so
+     nothing stretches or grows vertically. */
+  .rightChips {
+    display: grid;
+    grid-template-columns: 0fr 1fr;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+    transition: grid-template-columns 0.3s ease;
+  }
+  .rightChips.expanded { grid-template-columns: 1fr 96px; }
   .rightChips > button {
     width: 100%;
-    max-width: 100%;
-    flex: 0 1 auto;
     padding: 10px;
     font-size: 12px;
-    transition: max-width 0.3s ease;
   }
-  .rightChips > button:global(.active) { max-width: 96px; }
-  /* Mobile MA chips: a single-row strip that slides out beside the Chart
-     button (like desktop) instead of wrapping/growing vertically. */
   .maChips {
-    flex: 1 1 0;
-    min-width: 0;
     display: flex;
     overflow: hidden;
-    max-width: 0;
-    max-height: 0;
-    opacity: 0;
-    transition: max-width 0.3s ease, max-height 0.3s ease, opacity 0.25s ease;
-  }
-  .maChips.visible { max-width: 100%; max-height: 40px; opacity: 1; }
-  .maChipsInner { display: flex; flex-wrap: nowrap; gap: 4px; width: 100%; }
-  .maChipsInner > button {
-    flex: 1 1 0;
     min-width: 0;
-    padding: 8px 2px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .maChips.visible { opacity: 1; }
+  .maChipsInner { display: flex; gap: 4px; }
+  .maChipsInner > button {
+    flex: 0 0 auto;
+    padding: 8px 6px;
     font-size: 10px;
     white-space: nowrap;
   }
