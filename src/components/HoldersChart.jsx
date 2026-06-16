@@ -110,7 +110,7 @@ function joinByDate(holdRows, mcRows) {
 }
 
 // ---- Canvas draw ----
-function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, reveal = 1) {
+function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, reveal = 1, axisReveal = showMC ? 1 : 0) {
   if (!series.length) return
 
   const N    = series.length
@@ -121,8 +121,10 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
   const maxLabelW = Math.max(...yT.ticks.map(v => ctx.measureText(fmtNum(v)).width))
 
+  const mcOn = axisReveal > 0.001
   const basePad = responsivePad(W, maxLabelW)
-  const pad = showMC ? { ...basePad, r: W < 640 ? 56 : 72 } : basePad
+  const expandedR = W < 640 ? 56 : 72
+  const pad = mcOn ? { ...basePad, r: basePad.r + (expandedR - basePad.r) * axisReveal } : basePad
   const plotW = W - pad.l - pad.r
   const plotH = H - pad.t - pad.b
   const xScale = i => pad.l + (N <= 1 ? 0 : (i / (N - 1)) * plotW)
@@ -130,7 +132,7 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   let yMScale = null
   let yM = null
-  if (showMC) {
+  if (mcOn) {
     const mcVals = series.map(r => r.mc).filter(isFinite)
     if (mcVals.length) {
       yM = niceTicks(Math.min(...mcVals), Math.max(...mcVals), 5)
@@ -145,19 +147,26 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
 
   if (yMScale && yM) {
     const isLight = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+    ctx.save()
+    ctx.globalAlpha = axisReveal
     ctx.fillStyle  = isLight ? '#201E1F' : '#E8E6EE'
     ctx.font       = `${pad.axisFontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
     ctx.textAlign  = 'left'
     ctx.textBaseline = 'middle'
+    const restX = pad.l + plotW + 6
+    const labelX = W + (restX - W) * axisReveal
     for (const v of yM.ticks) {
-      ctx.fillText(fmtUSD(v), pad.l + plotW + 6, yMScale(v))
+      ctx.fillText(fmtUSD(v), labelX, yMScale(v))
     }
+    ctx.restore()
   }
 
   drawXLabels(ctx, series, xScale, pad, plotH, pad.axisFontSize, plotW)
 
   // MC line
-  if (showMC && yMScale) {
+  if (mcOn && yMScale) {
+    ctx.save()
+    ctx.globalAlpha = axisReveal
     const mcPts = series
       .map((r, i) => isFinite(r.mc) ? { x: xScale(i), y: rY(yMScale(r.mc)), mc: r.mc } : null)
       .filter(Boolean)
@@ -199,13 +208,14 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx, re
         ctx.stroke()
       }
     }
+    ctx.restore()
   }
 
   // MA lines
   for (const n of activeMAs) {
     const maVals = maLines[n]
     if (!maVals) continue
-    const scaleY = (showMC && yMScale) ? yMScale : yTScale
+    const scaleY = (mcOn && yMScale) ? yMScale : yTScale
     const colors = { 9: '#a78bfa', 26: '#38bdf8', 50: '#fb923c', 200: '#f43f5e' }
     ctx.strokeStyle = colors[n] || '#888'
     ctx.lineWidth   = 1.5
@@ -280,6 +290,9 @@ export default function HoldersChart({ collapsed, onToggle }) {
   const rafRef    = useRef(null)
   const hasDataRef = useRef(false)
   const prevSpinningRef = useRef(false)
+  const axisRevealRef = useRef(0)
+  const axisRafRef    = useRef(null)
+  const prevShowMCRef  = useRef(false)
 
   const series = useMemo(() => {
     const filtered = customDays != null
@@ -371,7 +384,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx, revealRef.current)
+    drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx, revealRef.current, axisRevealRef.current)
   }, [series, maLines, maMCLines, activeMAs, showMC, tooltipIdx])
 
   const animateReveal = useCallback((from, to, duration) => {
@@ -386,6 +399,27 @@ export default function HoldersChart({ collapsed, onToggle }) {
     }
     rafRef.current = requestAnimationFrame(step)
   }, [draw])
+
+  const animateAxis = useCallback((from, to, duration) => {
+    cancelAnimationFrame(axisRafRef.current)
+    const start = performance.now()
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3)
+      axisRevealRef.current = from + (to - from) * eased
+      draw()
+      if (t < 1) axisRafRef.current = requestAnimationFrame(step)
+    }
+    axisRafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Price scale slides in from the right edge when the Chart toggle turns on, out the same way when off
+  useEffect(() => {
+    if (showMC !== prevShowMCRef.current) {
+      prevShowMCRef.current = showMC
+      animateAxis(axisRevealRef.current, showMC ? 1 : 0, 320)
+    }
+  }, [showMC, animateAxis])
 
   // Line grows up from the x-axis the first time data loads
   useEffect(() => {
@@ -414,7 +448,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {

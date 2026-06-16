@@ -43,7 +43,7 @@ function movingAvgPrice(rows, n) {
   })
 }
 
-function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice, reveal = 1) {
+function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPrice, reveal = 1, axisReveal = showPrice ? 1 : 0) {
   if (!series.length) return
 
   const N    = series.length
@@ -54,8 +54,12 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   ctx.font = `${fontSize0}px 'Asap Condensed',system-ui,sans-serif`
   const maxLW = Math.max(...yT.ticks.map(v => ctx.measureText(fmtVol(v)).width))
 
+  const mcOn = axisReveal > 0.001
   const pad = responsivePad(W, maxLW)
-  if (showPrice) pad.r = W < 640 ? 56 : 72
+  if (mcOn) {
+    const expandedR = W < 640 ? 56 : 72
+    pad.r = pad.r + (expandedR - pad.r) * axisReveal
+  }
   const plotW = W - pad.l - pad.r
   const plotH = H - pad.t - pad.b
 
@@ -77,7 +81,9 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
   const rY = y => baselineY + (y - baselineY) * reveal
 
   // MC line + MA lines + right axis
-  if (showPrice) {
+  if (mcOn) {
+    ctx.save()
+    ctx.globalAlpha = axisReveal
     // Convert price → MC
     const mcs = series.map(r => r.price > 0 ? r.price * CIRC_SUPPLY : null)
     const validMCs = mcs.filter(v => v != null)
@@ -157,13 +163,16 @@ function drawVolChart(ctx, W, H, series, maLines, activeMAs, tooltipIdx, showPri
       ctx.font         = `${pad.axisFontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
       ctx.textAlign    = 'left'
       ctx.textBaseline = 'middle'
+      const restX = pad.l + plotW + 6
+      const labelX = W + (restX - W) * axisReveal
       for (const tick of mTicks) {
         const y = mScale(tick)
         if (y < pad.t - 2 || y > pad.t + plotH + 2) continue
-        ctx.fillText(fmtUSD(tick), pad.l + plotW + 6, y)
+        ctx.fillText(fmtUSD(tick), labelX, y)
       }
       ctx.restore()
     }
+    ctx.restore()
   }
 
   // Crosshair
@@ -198,6 +207,9 @@ export default function VolumeChart({ collapsed, onToggle }) {
   const rafRef    = useRef(null)
   const hasDataRef = useRef(false)
   const prevSpinningRef = useRef(false)
+  const axisRevealRef = useRef(0)
+  const axisRafRef    = useRef(null)
+  const prevShowPriceRef = useRef(false)
 
   const fetchVolume = useCallback(async () => {
     const r = await fetch('/api/volume?days=180')
@@ -256,7 +268,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
     const ctx = canvas.getContext('2d')
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
-    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice, revealRef.current)
+    drawVolChart(ctx, wCss, hCss, series, maLines, activeMAs, tooltipIdx, showPrice, revealRef.current, axisRevealRef.current)
   }, [series, maLines, activeMAs, tooltipIdx, showPrice])
 
   const animateReveal = useCallback((from, to, duration) => {
@@ -271,6 +283,27 @@ export default function VolumeChart({ collapsed, onToggle }) {
     }
     rafRef.current = requestAnimationFrame(step)
   }, [draw])
+
+  const animateAxis = useCallback((from, to, duration) => {
+    cancelAnimationFrame(axisRafRef.current)
+    const start = performance.now()
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3)
+      axisRevealRef.current = from + (to - from) * eased
+      draw()
+      if (t < 1) axisRafRef.current = requestAnimationFrame(step)
+    }
+    axisRafRef.current = requestAnimationFrame(step)
+  }, [draw])
+
+  // Price scale slides in from the right edge when the Chart toggle turns on, out the same way when off
+  useEffect(() => {
+    if (showPrice !== prevShowPriceRef.current) {
+      prevShowPriceRef.current = showPrice
+      animateAxis(axisRevealRef.current, showPrice ? 1 : 0, 320)
+    }
+  }, [showPrice, animateAxis])
 
   // Bars/line grow up from the x-axis the first time data loads
   useEffect(() => {
@@ -299,7 +332,7 @@ export default function VolumeChart({ collapsed, onToggle }) {
     // Redraw when theme attribute changes
     const mo = new MutationObserver(draw)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current) }
+    return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(rafRef.current); cancelAnimationFrame(axisRafRef.current) }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {
