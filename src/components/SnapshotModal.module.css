@@ -112,36 +112,44 @@
   line-height: 1;
 }
 
+/* 1. Slightly increased kerning vs 0.30em */
 .cardBrandSub {
   font-family: var(--font-title);
   font-size: 8.5px;
   font-weight: 400;
-  letter-spacing: 0.30em;
+  letter-spacing: 0.38em;
   color: #9E9399;
   line-height: 1.4;
   text-transform: uppercase;
 }
 
-/* ---- MC hero block ---- */
-.mcRow {
+/* ---- MC + ETH hero block ---- */
+.heroBlock {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 10px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
   padding-bottom: 16px;
 }
 
-.mcLabel {
+/* One stat row: label above, value+delta on same line */
+.statRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.statLabel {
   font-size: 10px;
   letter-spacing: 0.16em;
   color: #9E9399;
 }
 
-/* MC value + delta on the same line */
-.mcValueRow {
+/* Value + delta share a line; delta is right-justified */
+.statValueRow {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  justify-content: space-between;
 }
 
 .mcValue {
@@ -153,15 +161,43 @@
   line-height: 1;
 }
 
+/* 3+4. ~75% of 32px = 24px; right-side with 24H suffix */
 .mcDelta {
   font-family: var(--font-title);
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.mcDeltaSuffix {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* 6. ETH price — same layout, smaller fonts */
+.ethValue {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #C8C4CC;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.ethDelta {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: right;
 }
 
 .cmcBadge {
-  margin-left: auto;
+  align-self: flex-start;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -169,36 +205,8 @@
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 6px;
   padding: 3px 7px;
-  align-self: center;
   white-space: nowrap;
-}
-
-/* ETH native price row */
-.ethRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 1px;
-}
-
-.ethLabel {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #9E9399;
-}
-
-.ethPrice {
-  font-size: 13px;
-  font-weight: 600;
-  color: #C8C4CC;
-  letter-spacing: 0.02em;
-}
-
-.ethDelta {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  margin-top: 2px;
 }
 
 /* ---- Chain table ---- */
@@ -234,6 +242,9 @@
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
+/* 8. Remove border on last row */
+.chainRow:last-child { border-bottom: none; }
+
 .chainRow span {
   font-size: 13px;
   font-weight: 600;
@@ -251,10 +262,11 @@
   align-self: center;
 }
 
+/* 7. Larger total column */
 .chainTotal {
   color: #F05C4E !important;
   font-weight: 800 !important;
-  font-size: 15px !important;
+  font-size: 17px !important;
   text-align: right !important;
 }
 

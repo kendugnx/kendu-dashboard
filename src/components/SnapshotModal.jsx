@@ -145,27 +145,34 @@ export default function SnapshotModal({ onClose }) {
             <div className={styles.loadingMsg}>Loading stats…</div>
           ) : stats ? (
             <>
-              <div className={styles.mcRow}>
-                <div className={styles.mcLabel}>MARKET CAP</div>
-                <div className={styles.mcValueRow}>
-                  <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
-                  <span className={styles.mcDelta} style={{ color: changeColor }}>
-                    {changeSign}{stats.change24.toFixed(2)}%
-                  </span>
-                  {stats.cmcRank && (
-                    <span className={styles.cmcBadge}>CMC MEME #{stats.cmcRank}</span>
-                  )}
-                </div>
-                {stats.ethPrice != null && (
-                  <div className={styles.ethRow}>
-                    <span className={styles.ethLabel}>ETHEREUM</span>
-                    <span className={styles.ethPrice}>${stats.ethPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                    {stats.ethChange24 != null && (
-                      <span className={styles.ethDelta} style={{ color: ethChgColor }}>
-                        {ethChgSign}{stats.ethChange24.toFixed(2)}%
-                      </span>
-                    )}
+              <div className={styles.heroBlock}>
+                {/* KENDU MC */}
+                <div className={styles.statRow}>
+                  <div className={styles.statLabel}>KENDU MC</div>
+                  <div className={styles.statValueRow}>
+                    <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
+                    <span className={styles.mcDelta} style={{ color: changeColor }}>
+                      {changeSign}{stats.change24.toFixed(2)}%<span className={styles.mcDeltaSuffix}>24H</span>
+                    </span>
                   </div>
+                </div>
+                {/* ETH Price */}
+                {stats.ethPrice != null && (
+                  <div className={styles.statRow}>
+                    <div className={styles.statLabel}>ETH PRICE</div>
+                    <div className={styles.statValueRow}>
+                      <span className={styles.ethValue}>${stats.ethPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                      {stats.ethChange24 != null && (
+                        <span className={styles.ethDelta} style={{ color: ethChgColor }}>
+                          {ethChgSign}{stats.ethChange24.toFixed(2)}%<span className={styles.mcDeltaSuffix}>24H</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* CMC badge */}
+                {stats.cmcRank && (
+                  <span className={styles.cmcBadge}>CMC MEME #{stats.cmcRank}</span>
                 )}
               </div>
 
