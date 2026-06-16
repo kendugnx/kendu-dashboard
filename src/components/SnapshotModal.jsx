@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
-import { getJSON, fetchCSV } from '../utils/index.js'
+import { getJSON, fetchCSV, computeHHI, hhiLabel } from '../utils/index.js'
 import { API } from '../utils/apiBase.js'
 import { LPS, CIRC_SUPPLY, HOLDERS_CSV_URL } from '../utils/constants.js'
 import styles from './SnapshotModal.module.css'
@@ -41,7 +41,7 @@ function parseHoldersCSV(text) {
 }
 
 async function fetchStats() {
-  const [ethPairRes, baseRes, solRes, csvRes, cmcRes, tradesRes] = await Promise.allSettled([
+  const [ethPairRes, baseRes, solRes, csvRes, cmcRes, tradesRes, holdersRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
@@ -49,6 +49,7 @@ async function fetchStats() {
     fetch('/api/cmc-rank').then(r => r.json()),
     fetch(`https://api.geckoterminal.com/api/v2/networks/eth/pools/${GT_POOL_ETH}/trades?limit=300`)
       .then(r => r.json()),
+    fetch('/api/holders?limit=100').then(r => r.json()),
   ])
 
   function pair(res) {
@@ -98,6 +99,9 @@ async function fetchStats() {
   const cmcData = cmcRes.status === 'fulfilled' ? cmcRes.value : {}
   const cmcRank  = cmcData?.rank     ?? null
   const memeRank = cmcData?.memeRank ?? null
+  const hhi = holdersRes.status === 'fulfilled' && Array.isArray(holdersRes.value)
+    ? computeHHI(holdersRes.value)
+    : null
 
   return {
     mcap, change24,
@@ -107,6 +111,7 @@ async function fetchStats() {
     buys, sells,
     largestBuy, largestSell,
     cmcRank, memeRank,
+    hhi,
   }
 }
 
@@ -248,6 +253,16 @@ export default function SnapshotModal({ onClose }) {
                   </div>
                 )}
               </div>
+
+              {/* ---- HHI ---- */}
+              {stats.hhi != null && (
+                <div className={styles.hhiRow}>
+                  <span className={styles.hhiLabel}>HHI CONCENTRATION</span>
+                  <span className={styles.hhiVal}>
+                    {stats.hhi.toFixed(0)} <span className={styles.hhiTag}>{hhiLabel(stats.hhi)}</span>
+                  </span>
+                </div>
+              )}
 
               {/* ---- Activity ---- */}
               {(stats.buys > 0 || stats.largestBuy > 0) && (

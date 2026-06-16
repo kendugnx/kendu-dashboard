@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import RefreshButton from './RefreshButton.jsx'
 import CollapseButton from './CollapseButton.jsx'
 import { useRefresh } from '../hooks/useRefresh.js'
-import { fetchCSV, fmtNum, fmtUpdated } from '../utils/index.js'
+import { fetchCSV, fmtNum, fmtUpdated, computeHHI, hhiLabel } from '../utils/index.js'
 import { HOLDERS_CSV_URL } from '../utils/constants.js'
 import styles from './HolderComposition.module.css'
 
@@ -83,10 +83,15 @@ export default function HolderComposition({ collapsed, onToggle }) {
   const [data,      setData]      = useState(null)
   const [hovered,   setHovered]   = useState(null)
   const [updatedTs, setUpdatedTs] = useState(null)
+  const [hhi,       setHhi]       = useState(null)
 
   const loadData = useCallback(async () => {
-    const txt = await fetchCSV(HOLDERS_CSV_URL)
+    const [txt, holdersRes] = await Promise.all([
+      fetchCSV(HOLDERS_CSV_URL),
+      fetch('/api/holders?limit=100').then(r => r.json()).catch(() => null),
+    ])
     setData(parseLatestRow(txt))
+    setHhi(Array.isArray(holdersRes) ? computeHHI(holdersRes) : null)
     setUpdatedTs(Date.now())
   }, [])
 
@@ -174,6 +179,15 @@ export default function HolderComposition({ collapsed, onToggle }) {
           ))}
         </div>
       </div>
+
+      {hhi != null && (
+        <div className={styles.hhiRow}>
+          <span className={styles.hhiLabel}>HHI Concentration</span>
+          <span className={styles.hhiVal}>
+            {hhi.toFixed(0)} <span className={styles.hhiTag}>{hhiLabel(hhi)}</span>
+          </span>
+        </div>
+      )}
 
       <div className="k-foot">{fmtUpdated(updatedTs)}</div>
       </div></div>{/* k-body */}

@@ -192,6 +192,25 @@ export function rollingAvg(rows, days) {
   })
 }
 
+// ---- HHI (Herfindahl-Hirschman Index) ----
+// Computed from top-N holder shares (percent of supply, 0-100 each).
+// Long-tail holders outside the top N contribute negligibly since shares are squared.
+export function computeHHI(holders) {
+  if (!Array.isArray(holders) || !holders.length) return null
+  const sum = holders.reduce((acc, h) => {
+    const share = Number(h.share)
+    return isFinite(share) ? acc + share * share : acc
+  }, 0)
+  return Math.round(sum * 100) / 100
+}
+
+export function hhiLabel(hhi) {
+  if (hhi == null || !isFinite(hhi)) return '—'
+  if (hhi < 1500) return 'Low'
+  if (hhi < 2500) return 'Moderate'
+  return 'High'
+}
+
 // ---- Dexscreener best pair picker ----
 export function pickBestPair(pairs) {
   const eth = (pairs || []).filter(p => (p.chainId || '').toLowerCase() === 'ethereum')

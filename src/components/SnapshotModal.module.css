@@ -233,6 +233,17 @@
   text-align: right !important;
 }
 
+/* ---- HHI ---- */
+.hhiRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+.hhiLabel { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: #9E9399; }
+.hhiVal { font-family: var(--font-title); font-size: 14px; font-weight: 800; color: #E8E6EE; }
+.hhiTag { font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #9E9399; }
+
 /* ---- Activity section ---- */
 .activity {
   border-top: 1px solid rgba(255,255,255,0.07);
