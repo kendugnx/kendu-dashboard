@@ -112,12 +112,11 @@
   line-height: 1;
 }
 
-/* Reduced font-size so "DASHBOARD" visually matches the width of "KENDU" */
 .cardBrandSub {
   font-family: var(--font-title);
-  font-size: 7.4px;
-  font-weight: 500;
-  letter-spacing: 0.31em;
+  font-size: 8.5px;
+  font-weight: 400;
+  letter-spacing: 0.30em;
   color: #9E9399;
   line-height: 1.4;
   text-transform: uppercase;
@@ -126,10 +125,16 @@
 /* ---- MC hero block ---- */
 .mcRow {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: flex-end;
+  justify-content: space-between;
   border-bottom: 1px solid rgba(255,255,255,0.07);
   padding-bottom: 16px;
+}
+
+.mcLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .mcLabel {
@@ -152,7 +157,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 2px;
 }
 
 .mcPriceVal {
@@ -166,6 +170,23 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+/* Right-side 24h change */
+.mcChange {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding-bottom: 4px;
+}
+
+.mcChangePeriod {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
 }
 
 /* ---- Chain table ---- */
@@ -189,10 +210,8 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   color: #9E9399;
-  text-align: right;
+  text-align: left;
 }
-
-.chainHead span:first-child { text-align: left; }
 
 .chainRow {
   display: grid;
@@ -206,7 +225,7 @@
   font-size: 13px;
   font-weight: 600;
   color: #C8C4CC;
-  text-align: right;
+  text-align: left;
   letter-spacing: 0.02em;
 }
 
@@ -220,8 +239,8 @@
 }
 
 .chainTotal {
-  color: #E8E6EE !important;
-  font-weight: 700 !important;
+  color: #F05C4E !important;
+  font-weight: 800 !important;
 }
 
 .muted {
@@ -238,20 +257,18 @@
   border-top: 1px solid rgba(255,255,255,0.07);
 }
 
-.cardSlogan {
-  font-family: var(--font-title);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: #E8E6EE;
-}
-
 .cardUrl {
   font-family: var(--font-title);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #F05C4E;
+}
+
+.cardSlogan {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #9E9399;
 }
 
 .loadingMsg {

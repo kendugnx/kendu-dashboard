@@ -126,13 +126,18 @@ export default function SnapshotModal({ onClose }) {
           ) : stats ? (
             <>
               <div className={styles.mcRow}>
-                <div className={styles.mcLabel}>MARKET CAP</div>
-                <div className={styles.mcValue}>{fmtMC(stats.mcap)}</div>
-                <div className={styles.mcPrice}>
-                  <span className={styles.mcPriceVal}>{fmtPrice(stats.price)}</span>
-                  <span className={styles.mcPriceDelta} style={{ color: changeColor }}>
-                    {changeSign}{stats.change24.toFixed(2)}%
-                  </span>
+                <div className={styles.mcLeft}>
+                  <div className={styles.mcLabel}>MARKET CAP</div>
+                  <div className={styles.mcValue}>{fmtMC(stats.mcap)}</div>
+                  <div className={styles.mcPrice}>
+                    <span className={styles.mcPriceVal}>{fmtPrice(stats.price)}</span>
+                    <span className={styles.mcPriceDelta} style={{ color: changeColor }}>
+                      {changeSign}{stats.change24.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.mcChange} style={{ color: changeColor }}>
+                  {changeSign}{stats.change24.toFixed(2)}% <span className={styles.mcChangePeriod}>24H</span>
                 </div>
               </div>
 
@@ -165,8 +170,8 @@ export default function SnapshotModal({ onClose }) {
           )}
 
           <div className={styles.cardFooter}>
-            <span className={styles.cardSlogan}>HIGHER.</span>
             <span className={styles.cardUrl}>KENDU.io</span>
+            <span className={styles.cardSlogan}>HIGHER.</span>
           </div>
         </div>
 
