@@ -17,13 +17,6 @@ function fmtMC(v) {
   return '$' + v.toFixed(2)
 }
 
-function fmtPrice(v) {
-  if (!v || v <= 0) return '—'
-  if (v < 0.00001) return '$' + v.toFixed(10).replace(/0+$/, '')
-  if (v < 0.001)   return '$' + v.toFixed(8).replace(/0+$/, '')
-  return '$' + v.toFixed(6)
-}
-
 function fmtCompact(v) {
   if (!v || v <= 0) return '—'
   if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M'
@@ -32,10 +25,12 @@ function fmtCompact(v) {
 }
 
 async function fetchStats() {
-  const [ethRes, baseRes, solRes] = await Promise.allSettled([
+  const [ethPairRes, baseRes, solRes, cgEthRes, holdersRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true').then(r => r.json()),
+    fetch(`https://api.ethplorer.io/getTokenInfo/${KENDU_ETH_CA}?apiKey=freekey`).then(r => r.json()),
   ])
 
   function pair(res) {
@@ -43,13 +38,17 @@ async function fetchStats() {
     return Array.isArray(j?.pairs) ? j.pairs[0] : j?.pair ?? null
   }
 
-  const eth  = pair(ethRes)
+  const eth  = pair(ethPairRes)
   const base = pair(baseRes)
   const sol  = pair(solRes)
 
-  const price    = parseFloat(eth?.priceUsd ?? 0)
-  const mcap     = price * CIRC_SUPPLY
-  const change24 = parseFloat(eth?.priceChange?.h24 ?? 0)
+  const kenduPrice = parseFloat(eth?.priceUsd ?? 0)
+  const mcap       = kenduPrice * CIRC_SUPPLY
+  const change24   = parseFloat(eth?.priceChange?.h24 ?? 0)
+
+  const cgEth        = cgEthRes.status === 'fulfilled' ? cgEthRes.value : null
+  const ethPrice     = cgEth?.ethereum?.usd ?? null
+  const ethChange24  = cgEth?.ethereum?.usd_24h_change ?? null
 
   const volEth   = parseFloat(eth?.volume?.h24  ?? 0)
   const volBase  = parseFloat(base?.volume?.h24 ?? 0)
@@ -61,7 +60,9 @@ async function fetchStats() {
   const liqSol   = parseFloat(sol?.liquidity?.usd  ?? 0)
   const liqTotal = liqEth + liqBase + liqSol
 
-  return { price, mcap, change24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal }
+  const holdersEth = holdersRes.status === 'fulfilled' ? (holdersRes.value?.holdersCount ?? null) : null
+
+  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holdersEth }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -96,8 +97,10 @@ export default function SnapshotModal({ onClose }) {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
 
-  const changeColor = stats?.change24 >= 0 ? '#24c65b' : '#B63733'
-  const changeSign  = stats?.change24 >= 0 ? '+' : ''
+  const changeColor   = stats?.change24 >= 0 ? '#24c65b' : '#B63733'
+  const changeSign    = stats?.change24 >= 0 ? '+' : ''
+  const ethChgColor   = (stats?.ethChange24 ?? 0) >= 0 ? '#24c65b' : '#B63733'
+  const ethChgSign    = (stats?.ethChange24 ?? 0) >= 0 ? '+' : ''
 
   return (
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -126,19 +129,24 @@ export default function SnapshotModal({ onClose }) {
           ) : stats ? (
             <>
               <div className={styles.mcRow}>
-                <div className={styles.mcLeft}>
-                  <div className={styles.mcLabel}>MARKET CAP</div>
-                  <div className={styles.mcValue}>{fmtMC(stats.mcap)}</div>
-                  <div className={styles.mcPrice}>
-                    <span className={styles.mcPriceVal}>{fmtPrice(stats.price)}</span>
-                    <span className={styles.mcPriceDelta} style={{ color: changeColor }}>
-                      {changeSign}{stats.change24.toFixed(2)}%
-                    </span>
+                <div className={styles.mcLabel}>MARKET CAP</div>
+                <div className={styles.mcValueRow}>
+                  <span className={styles.mcValue}>{fmtMC(stats.mcap)}</span>
+                  <span className={styles.mcDelta} style={{ color: changeColor }}>
+                    {changeSign}{stats.change24.toFixed(2)}%
+                  </span>
+                </div>
+                {stats.ethPrice != null && (
+                  <div className={styles.ethRow}>
+                    <span className={styles.ethLabel}>ETHEREUM</span>
+                    <span className={styles.ethPrice}>${stats.ethPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                    {stats.ethChange24 != null && (
+                      <span className={styles.ethDelta} style={{ color: ethChgColor }}>
+                        {ethChgSign}{stats.ethChange24.toFixed(2)}%
+                      </span>
+                    )}
                   </div>
-                </div>
-                <div className={styles.mcChange} style={{ color: changeColor }}>
-                  {changeSign}{stats.change24.toFixed(2)}% <span className={styles.mcChangePeriod}>24H</span>
-                </div>
+                )}
               </div>
 
               <div className={styles.chainTable}>
@@ -162,6 +170,13 @@ export default function SnapshotModal({ onClose }) {
                   <span>{fmtCompact(stats.liqBase)}</span>
                   <span>{fmtCompact(stats.liqSol)}</span>
                   <span className={styles.chainTotal}>{fmtCompact(stats.liqTotal)}</span>
+                </div>
+                <div className={styles.chainRow}>
+                  <span className={styles.chainRowLabel}>HOLDERS</span>
+                  <span>{stats.holdersEth ? stats.holdersEth.toLocaleString() : '—'}</span>
+                  <span className={styles.muted}>—</span>
+                  <span className={styles.muted}>—</span>
+                  <span className={styles.chainTotal}>{stats.holdersEth ? stats.holdersEth.toLocaleString() : '—'}</span>
                 </div>
               </div>
             </>

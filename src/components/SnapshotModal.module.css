@@ -125,22 +125,23 @@
 /* ---- MC hero block ---- */
 .mcRow {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 5px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
   padding-bottom: 16px;
-}
-
-.mcLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .mcLabel {
   font-size: 10px;
   letter-spacing: 0.16em;
   color: #9E9399;
+}
+
+/* MC value + delta on the same line */
+.mcValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .mcValue {
@@ -152,41 +153,39 @@
   line-height: 1;
 }
 
-/* ETH price + 24h delta row below MC */
-.mcPrice {
+.mcDelta {
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ETH native price row */
+.ethRow {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 1px;
 }
 
-.mcPriceVal {
-  font-size: 13px;
-  font-weight: 500;
+.ethLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   color: #9E9399;
+}
+
+.ethPrice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #C8C4CC;
   letter-spacing: 0.02em;
 }
 
-.mcPriceDelta {
+.ethDelta {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-}
-
-/* Right-side 24h change */
-.mcChange {
-  font-family: var(--font-title);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  padding-bottom: 4px;
-}
-
-.mcChangePeriod {
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  opacity: 0.7;
 }
 
 /* ---- Chain table ---- */
@@ -212,6 +211,7 @@
   color: #9E9399;
   text-align: left;
 }
+.chainHead span:last-child { text-align: right; }
 
 .chainRow {
   display: grid;
@@ -241,6 +241,8 @@
 .chainTotal {
   color: #F05C4E !important;
   font-weight: 800 !important;
+  font-size: 15px !important;
+  text-align: right !important;
 }
 
 .muted {
