@@ -127,18 +127,18 @@
   }
   .rightChips > button:global(.active) { max-width: 96px; }
   .maChips {
+    display: grid;
+    grid-template-rows: 0fr;
     flex: 1 1 0;
-    flex-wrap: wrap;
     min-width: 0;
     max-width: 0;
-    max-height: 0;
     opacity: 0;
-    overflow: hidden;
     align-self: center;
-    transition: max-width 0.3s ease, max-height 0.3s ease, opacity 0.25s ease;
+    transition: max-width 0.3s ease, grid-template-rows 0.3s ease, opacity 0.25s ease;
   }
-  .maChips.visible { max-width: 100%; max-height: 200px; opacity: 1; }
-  .maChips > button { flex: 1; min-width: 56px; }
+  .maChips.visible { max-width: 100%; grid-template-rows: 1fr; opacity: 1; }
+  .maChipsInner { display: flex; flex-wrap: wrap; gap: 6px; overflow: hidden; min-height: 0; }
+  .maChipsInner > button { flex: 1; min-width: 56px; }
   .statsRow { flex-wrap: nowrap; gap: 4px; }
   .statPill {
     flex: 1;

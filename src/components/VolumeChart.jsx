@@ -337,13 +337,15 @@ export default function VolumeChart({ collapsed, onToggle }) {
         </div>
         <div className={styles.rightChips}>
           <div className={`${styles.maChips} ${showPrice ? styles.visible : ''}`}>
-            {MA_OPTS.map(n => (
-              <button
-                key={n}
-                className={`k-chip ${activeMAs.includes(n) ? 'active' : ''}`}
-                onClick={() => toggleMA(n)}
-              >MA {n}</button>
-            ))}
+            <div className={styles.maChipsInner}>
+              {MA_OPTS.map(n => (
+                <button
+                  key={n}
+                  className={`k-chip ${activeMAs.includes(n) ? 'active' : ''}`}
+                  onClick={() => toggleMA(n)}
+                >MA {n}</button>
+              ))}
+            </div>
           </div>
           <button
             className={`k-chip ${showPrice ? 'active' : ''}`}
