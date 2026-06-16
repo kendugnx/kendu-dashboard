@@ -315,16 +315,16 @@ export default async function handler(req, res) {
       await sendMessage(chatId,
         `<b>Kendu Dashboard Bot</b>\n\n` +
         `Commands:\n` +
-        `/price — ETH price & Kendu MC\n` +
-        `/mcap — Kendu market cap\n` +
-        `/holders — Holder count & chart\n` +
-        `/gas — Current gas fees\n` +
-        `/hhi — Current HHI concentration\n` +
-        `/volume — Historic volume chart\n` +
-        `/snapshot — 24h snapshot card\n` +
-        `/calc — Calculate holdings value\n` +
+        `/price — ETH price + Kendu MC\n` +
+        `/mcap — Kendu MC\n` +
+        `/hhi — Current HHI index\n` +
+        `/gas — Current ETH gas fees\n` +
+        `/wen — X to MC\n` +
+        `/calc — Holdings value calculator\n` +
         `/gains — Gains calculator\n` +
-        `/wen — Wen?\n` +
+        `/holders — Holders chart\n` +
+        `/volume — Volume chart\n` +
+        `/snapshot — Generate 24h snapshot\n` +
         `/dashboard — Open the dashboard`
       )
 
