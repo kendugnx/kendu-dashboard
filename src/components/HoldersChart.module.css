@@ -123,15 +123,16 @@
      nothing stretches or grows vertically. */
   .rightChips {
     display: grid;
-    grid-template-columns: 0fr 1fr;
+    grid-template-columns: minmax(0, 0fr) minmax(0, 1fr);
     align-items: center;
     width: 100%;
     gap: 8px;
     transition: grid-template-columns 0.3s ease;
   }
-  .rightChips.expanded { grid-template-columns: 1fr 96px; }
+  .rightChips.expanded { grid-template-columns: minmax(0, 1fr) minmax(0, 96px); }
   .rightChips > button {
     width: 100%;
+    min-width: 0;
     padding: 10px;
     font-size: 12px;
   }
