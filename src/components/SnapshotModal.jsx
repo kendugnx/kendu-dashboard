@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
-import { getJSON } from '../utils/index.js'
+import { getJSON, fetchCSV } from '../utils/index.js'
 import { API } from '../utils/apiBase.js'
-import { LPS, CIRC_SUPPLY } from '../utils/constants.js'
+import { LPS, CIRC_SUPPLY, HOLDERS_CSV_URL } from '../utils/constants.js'
 import styles from './SnapshotModal.module.css'
 
 const PAIR_ETH  = LPS.eth.address
@@ -24,13 +24,28 @@ function fmtCompact(v) {
   return '$' + v.toFixed(0)
 }
 
+function parseHoldersCSV(text) {
+  const lines = text.trim().split(/\r?\n/)
+  if (lines.length < 2) return null
+  const header  = lines[0].split(',').map(s => s.trim().toLowerCase().replace(/[^a-z0-9]/g, ''))
+  const ethIdx  = header.findIndex(h => /eth/.test(h))
+  const baseIdx = header.findIndex(h => /base/.test(h))
+  const solIdx  = header.findIndex(h => /sol/.test(h))
+  const totIdx  = header.findIndex(h => /total/.test(h))
+  const last    = lines[lines.length - 1].split(',').map(s => s.trim())
+  const num     = idx => idx >= 0 ? Number(last[idx]?.replace(/[^\d]/g, '') || 0) : 0
+  return { eth: num(ethIdx), base: num(baseIdx), sol: num(solIdx), total: num(totIdx) }
+}
+
 async function fetchStats() {
-  const [ethPairRes, baseRes, solRes, cgEthRes, holdersRes, cmcRes] = await Promise.allSettled([
+  const cgPath = '/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true'
+
+  const [ethPairRes, baseRes, solRes, cgEthRes, csvRes, cmcRes] = await Promise.allSettled([
     getJSON(API.dex(`/latest/dex/pairs/ethereum/${PAIR_ETH}`)),
     getJSON(API.dex(`/latest/dex/pairs/base/${PAIR_BASE}`)),
     getJSON(API.dex(`/latest/dex/pairs/solana/${PAIR_SOL}`)),
-    fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true').then(r => r.json()),
-    fetch(`https://api.ethplorer.io/getTokenInfo/${KENDU_ETH_CA}?apiKey=freekey`).then(r => r.json()),
+    getJSON(API.coingecko(cgPath)),
+    fetchCSV(HOLDERS_CSV_URL),
     fetch('/api/cmc-rank').then(r => r.json()),
   ])
 
@@ -47,9 +62,9 @@ async function fetchStats() {
   const mcap       = kenduPrice * CIRC_SUPPLY
   const change24   = parseFloat(eth?.priceChange?.h24 ?? 0)
 
-  const cgEth        = cgEthRes.status === 'fulfilled' ? cgEthRes.value : null
-  const ethPrice     = cgEth?.ethereum?.usd ?? null
-  const ethChange24  = cgEth?.ethereum?.usd_24h_change ?? null
+  const cgEth      = cgEthRes.status === 'fulfilled' ? cgEthRes.value : null
+  const ethPrice   = cgEth?.ethereum?.usd ?? null
+  const ethChange24 = cgEth?.ethereum?.usd_24h_change ?? null
 
   const volEth   = parseFloat(eth?.volume?.h24  ?? 0)
   const volBase  = parseFloat(base?.volume?.h24 ?? 0)
@@ -61,10 +76,10 @@ async function fetchStats() {
   const liqSol   = parseFloat(sol?.liquidity?.usd  ?? 0)
   const liqTotal = liqEth + liqBase + liqSol
 
-  const holdersEth = holdersRes.status === 'fulfilled' ? (holdersRes.value?.holdersCount ?? null) : null
-  const cmcRank    = cmcRes.status === 'fulfilled' ? (cmcRes.value?.rank ?? null) : null
+  const holders = csvRes.status === 'fulfilled' ? parseHoldersCSV(csvRes.value) : null
+  const cmcRank = cmcRes.status === 'fulfilled' ? (cmcRes.value?.rank ?? null) : null
 
-  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holdersEth, cmcRank }
+  return { mcap, change24, ethPrice, ethChange24, volEth, volBase, volSol, volTotal, liqEth, liqBase, liqSol, liqTotal, holders, cmcRank }
 }
 
 export default function SnapshotModal({ onClose }) {
@@ -74,7 +89,7 @@ export default function SnapshotModal({ onClose }) {
   const cardRef               = useRef(null)
 
   useEffect(() => {
-    fetchStats().then(s => { setStats(s); setLoading(false) }).catch(() => setLoading(false))
+    fetchStats().then(s => { setStats(s); setLoading(false) }).catch(e => { console.error('SnapshotModal fetchStats:', e); setLoading(false) })
   }, [])
 
   const download = useCallback(async () => {
@@ -176,13 +191,15 @@ export default function SnapshotModal({ onClose }) {
                   <span>{fmtCompact(stats.liqSol)}</span>
                   <span className={styles.chainTotal}>{fmtCompact(stats.liqTotal)}</span>
                 </div>
-                <div className={styles.chainRow}>
-                  <span className={styles.chainRowLabel}>HOLDERS</span>
-                  <span>{stats.holdersEth ? stats.holdersEth.toLocaleString() : '—'}</span>
-                  <span className={styles.muted}>—</span>
-                  <span className={styles.muted}>—</span>
-                  <span className={styles.chainTotal}>{stats.holdersEth ? stats.holdersEth.toLocaleString() : '—'}</span>
-                </div>
+                {stats.holders && (
+                  <div className={styles.chainRow}>
+                    <span className={styles.chainRowLabel}>HOLDERS</span>
+                    <span>{stats.holders.eth ? stats.holders.eth.toLocaleString() : '—'}</span>
+                    <span>{stats.holders.base ? stats.holders.base.toLocaleString() : '—'}</span>
+                    <span>{stats.holders.sol ? stats.holders.sol.toLocaleString() : '—'}</span>
+                    <span className={styles.chainTotal}>{stats.holders.total ? stats.holders.total.toLocaleString() : '—'}</span>
+                  </div>
+                )}
               </div>
             </>
           ) : (
