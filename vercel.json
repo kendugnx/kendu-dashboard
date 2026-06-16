@@ -1,5 +1,5 @@
 {
-"rewrites": [{ "source": "/((?!assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.jpeg|.*\\.png|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
+"rewrites": [{ "source": "/((?!@|src|node_modules|assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.jpeg|.*\\.png|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",

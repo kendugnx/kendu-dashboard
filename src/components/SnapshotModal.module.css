@@ -1,0 +1,217 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid rgba(var(--accent2-rgb), 0.3);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 680px;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalTitle {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--fg);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.closeBtn:hover { background: var(--surface-2); color: var(--fg); }
+
+/* ---- The shareable card ---- */
+.card {
+  position: relative;
+  background: #201E1F;
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 28px 32px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 280px;
+}
+
+.cardBg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(240,92,78,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(217,128,74,0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardLogo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.cardBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+}
+
+.cardBrandName {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #E8E6EE;
+  line-height: 1;
+}
+
+.cardBrandSub {
+  font-family: var(--font-title);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.38em;
+  color: #9E9399;
+  line-height: 1.4;
+}
+
+.cardDate {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #9E9399;
+  text-align: right;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding-bottom: 18px;
+}
+
+.priceLabel {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #9E9399;
+  text-transform: uppercase;
+}
+
+.priceValue {
+  font-family: var(--font-title);
+  font-size: 28px;
+  font-weight: 700;
+  color: #E8E6EE;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.priceChange {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.statLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #9E9399;
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #E8E6EE;
+  line-height: 1.2;
+}
+
+.statSub {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #9E9399;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.cardUrl {
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #F05C4E;
+}
+
+.cardTag {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #9E9399;
+}
+
+.loadingMsg {
+  color: #9E9399;
+  font-size: 14px;
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* ---- Footer actions ---- */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}

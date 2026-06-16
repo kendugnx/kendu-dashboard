@@ -33,12 +33,21 @@ export function responsivePad(wCss, maxLabelWidth = 0) {
   }
 }
 
+function themeColors() {
+  const light = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+  return {
+    label: light ? '#201E1F' : '#E8E6EE',
+    grid:  light ? '#C8C3C4' : '#5A5A5A',
+  }
+}
+
 // ---- Draw dashed Y-grid lines + labels ----
 export function drawYGrid(ctx, ticks, pad, W, H, fmtFn, fontSize) {
-  ctx.strokeStyle = '#5A5A5A'
+  const { label, grid } = themeColors()
+  ctx.strokeStyle = grid
   ctx.lineWidth   = 1
   ctx.setLineDash([4, 4])
-  ctx.fillStyle   = '#E8E6EE'
+  ctx.fillStyle   = label
   ctx.font        = `${fontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
   ctx.textAlign   = 'right'
   ctx.textBaseline = 'middle'
@@ -74,7 +83,7 @@ export function drawXLabels(ctx, series, xScale, pad, H, fontSize, plotW = 9999)
     ticks = [...indices].sort((a, b) => a - b)
   }
 
-  ctx.fillStyle    = '#E6EDF3'
+  ctx.fillStyle    = themeColors().label
   ctx.font         = `${fontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'alphabetic'

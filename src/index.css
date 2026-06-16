@@ -103,6 +103,17 @@
   --font-title: 'Moki', monospace;
 }
 
+/* ---- Light theme ---- */
+[data-theme="light"] {
+  --bg:        #F2EFEA;
+  --fg:        #201E1F;
+  --card:      #FFFFFF;
+  --surface-2: rgba(0, 0, 0, 0.04);
+  --surface-3: rgba(0, 0, 0, 0.10);
+  --muted:     #7A7478;
+  --grid:      #C8C3C4;
+}
+
 /* ---- Reset ---- */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -114,12 +125,17 @@ html, body, #root {
   height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 /* ---- Scrollbar ---- */

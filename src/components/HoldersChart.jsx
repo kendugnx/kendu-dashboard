@@ -141,7 +141,8 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
   drawYGrid(ctx, yT, pad, plotW, plotH, fmtNum, pad.axisFontSize)
 
   if (yMScale && yM) {
-    ctx.fillStyle  = '#E8E6EE'
+    const isLight = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+    ctx.fillStyle  = isLight ? '#201E1F' : '#E8E6EE'
     ctx.font       = `${pad.axisFontSize}px 'Asap Condensed',system-ui,-apple-system,sans-serif`
     ctx.textAlign  = 'left'
     ctx.textBaseline = 'middle'
@@ -179,14 +180,14 @@ function drawChart(ctx, W, H, series, maLines, activeMAs, showMC, tooltipIdx) {
       ctx.setLineDash([])
       ctx.stroke()
     }
-    // MC dot — color matches line direction at that point
     if (tooltipIdx != null && tooltipIdx >= 0 && tooltipIdx < N) {
       const r = series[tooltipIdx]
       if (isFinite(r.mc)) {
         const prev = series.slice(0, tooltipIdx).reverse().find(s => isFinite(s.mc))
         const dotColor = prev ? (r.mc >= prev.mc ? '#24c65b' : '#ff5e57') : '#24c65b'
         const xd = xScale(tooltipIdx), yd = yMScale(r.mc)
-        ctx.fillStyle = '#E6EDF3'
+        const isLightDot = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light'
+        ctx.fillStyle = isLightDot ? '#FFFFFF' : '#E6EDF3'
         ctx.strokeStyle = dotColor
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -329,7 +330,6 @@ export default function HoldersChart({ collapsed, onToggle }) {
     ])
     setAllHolders(parseHoldersCSV(holdTxt))
     const mcRows = mcTxt ? parseMCCSV(mcTxt) : []
-    // Append live MC as today's point, overwriting any same-day CSV entry
     const livePair = pickBestPair(dexJson?.pairs || [])
     const liveMC = livePair ? (Number(livePair.marketCap || 0) || 0) : 0
     if (isFinite(liveMC) && liveMC > 0) {
@@ -365,7 +365,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, wCss, hCss)
     drawChart(ctx, wCss, hCss, series, showMC ? maMCLines : maLines, activeMAs, showMC, tooltipIdx)
-  }, [series, maLines, activeMAs, showMC, tooltipIdx])
+  }, [series, maLines, maMCLines, activeMAs, showMC, tooltipIdx])
 
   useEffect(() => {
     draw()
@@ -373,26 +373,30 @@ export default function HoldersChart({ collapsed, onToggle }) {
     if (!wrap) return
     const ro = new ResizeObserver(draw)
     ro.observe(wrap)
-    return () => ro.disconnect()
+    // Redraw when theme attribute changes
+    const mo = new MutationObserver(draw)
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => { ro.disconnect(); mo.disconnect() }
   }, [draw])
 
   const handleMouseMove = useCallback(e => {
     const canvas = canvasRef.current
     if (!canvas || !series.length) return
-    const rect = canvas.getBoundingClientRect()
-    const mx   = e.clientX - rect.left
-    const W    = rect.width
-    const pad  = responsivePad(W)
+    const rect  = canvas.getBoundingClientRect()
+    const mx    = e.clientX - rect.left
+    const W     = rect.width
+    const pad   = responsivePad(W)
+    // Match draw(): pad.r widens when showMC is active
+    if (showMC) pad.r = W < 640 ? 56 : 72
     const plotW = W - pad.l - pad.r
-    const N    = series.length
+    const N     = series.length
     if (N < 2) return
     const idx  = Math.round(((mx - pad.l) / plotW) * (N - 1))
     const clampedIdx = Math.max(0, Math.min(N - 1, idx))
     setTooltipIdx(clampedIdx)
-    const row = series[clampedIdx]
-    setTooltipData(row)
+    setTooltipData(series[clampedIdx])
     setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-  }, [series])
+  }, [series, showMC])
 
   const handleMouseLeave = useCallback(() => {
     setTooltipIdx(null)
@@ -434,7 +438,6 @@ export default function HoldersChart({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
-      {/* Controls */}
       <div className={styles.controls}>
         <div className={styles.rangeChips}>
           <input
@@ -470,7 +473,6 @@ export default function HoldersChart({ collapsed, onToggle }) {
         </div>
       </div>
 
-      {/* Chart */}
       <div ref={wrapRef} className={styles.chartWrap}>
         <canvas
           ref={canvasRef}
@@ -485,10 +487,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
           const left = tooltipPos.x + TW + 16 > wW ? tooltipPos.x - TW - 8 : tooltipPos.x + 12
           const top  = tooltipPos.y + TH + 16 > wH ? tooltipPos.y - TH - 8 : tooltipPos.y + 12
           return (
-            <div
-              className={styles.tooltip}
-              style={{ left: Math.max(4, left), top: Math.max(4, top) }}
-            >
+            <div className={styles.tooltip} style={{ left: Math.max(4, left), top: Math.max(4, top) }}>
               <div className={styles.tooltipDate}>
                 {tooltipData.d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
@@ -510,13 +509,9 @@ export default function HoldersChart({ collapsed, onToggle }) {
         })()}
       </div>
 
-      {/* Stats row */}
       <div className={styles.statsRow}>
-        {[
-          ['ETH', eth],
-          ['BASE', base],
-          ['SOL', sol],
-        ].filter(([,v]) => isFinite(v) && v > 0).map(([label, val]) => (
+        {[['ETH', eth], ['BASE', base], ['SOL', sol]]
+          .filter(([,v]) => isFinite(v) && v > 0).map(([label, val]) => (
           <div key={label} className={styles.statPill}>
             <span className={styles.statLabel}>{label}:</span>
             <span className={styles.statVal}>{fmtNum(val)}</span>
@@ -533,7 +528,7 @@ export default function HoldersChart({ collapsed, onToggle }) {
       </div>
 
       <div className="k-foot">{fmtUpdated(updatedTs)}</div>
-      </div></div>{/* k-body */}
+      </div></div>
     </div>
   )
 }
