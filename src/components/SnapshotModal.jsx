@@ -168,10 +168,8 @@ export default function SnapshotModal({ onClose }) {
             </div>
             <div className={styles.cardMeta}>
               <span className={styles.cardDate}>{dateStr}</span>
-              <div className={styles.rankBadges}>
-                {stats?.cmcRank  && <span className={styles.cmcBadge}>CMC #{stats.cmcRank}</span>}
-                {stats?.memeRank && <span className={styles.cmcBadge}>MEME #{stats.memeRank}</span>}
-              </div>
+              {stats?.cmcRank  && <span className={styles.cmcBadge}>CMC #{stats.cmcRank}</span>}
+              {stats?.memeRank && <span className={styles.cmcBadge}>MEME #{stats.memeRank}</span>}
             </div>
           </div>
 
@@ -227,42 +225,40 @@ export default function SnapshotModal({ onClose }) {
               {/* ---- Activity ---- */}
               {(stats.buys > 0 || stats.largestBuy > 0) && (
                 <div className={styles.activity}>
-                  <div className={styles.activityHead}>24H ACTIVITY</div>
                   <div className={styles.activityRow}>
-                    <div className={styles.activityStat}>
+                    {/* Left: buys */}
+                    <div className={styles.activityCol}>
                       <span className={styles.activityLabel}>BUYS</span>
                       <span className={styles.activityVal} style={{ color: '#24c65b' }}>
                         {stats.buys.toLocaleString()}
                       </span>
+                      {stats.largestBuy > 0 && <>
+                        <span className={styles.activitySubLabel}>LARGEST BUY</span>
+                        <span className={styles.activitySubVal} style={{ color: '#24c65b' }}>
+                          {fmtCompact(stats.largestBuy)}
+                        </span>
+                      </>}
                     </div>
-                    <div className={styles.activityStat}>
-                      <span className={styles.activityLabel}>SELLS</span>
-                      <span className={styles.activityVal} style={{ color: '#B63733' }}>
-                        {stats.sells.toLocaleString()}
-                      </span>
-                    </div>
+                    {/* Center: ratio */}
                     {ratio && (
-                      <div className={styles.activityStat}>
+                      <div className={styles.activityColCenter}>
                         <span className={styles.activityLabel}>RATIO</span>
                         <span className={styles.activityVal}>{ratio}×</span>
                       </div>
                     )}
-                    {stats.largestBuy > 0 && (
-                      <div className={styles.activityStat}>
-                        <span className={styles.activityLabel}>BIGGEST BUY</span>
-                        <span className={styles.activityVal} style={{ color: '#24c65b' }}>
-                          {fmtCompact(stats.largestBuy)}
-                        </span>
-                      </div>
-                    )}
-                    {stats.largestSell > 0 && (
-                      <div className={styles.activityStat}>
-                        <span className={styles.activityLabel}>BIGGEST SELL</span>
-                        <span className={styles.activityVal} style={{ color: '#B63733' }}>
+                    {/* Right: sells */}
+                    <div className={styles.activityColRight}>
+                      <span className={styles.activityLabel}>SELLS</span>
+                      <span className={styles.activityVal} style={{ color: '#B63733' }}>
+                        {stats.sells.toLocaleString()}
+                      </span>
+                      {stats.largestSell > 0 && <>
+                        <span className={styles.activitySubLabel}>LARGEST SELL</span>
+                        <span className={styles.activitySubVal} style={{ color: '#B63733' }}>
                           {fmtCompact(stats.largestSell)}
                         </span>
-                      </div>
-                    )}
+                      </>}
+                    </div>
                   </div>
                 </div>
               )}

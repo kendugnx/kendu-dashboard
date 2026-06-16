@@ -126,11 +126,6 @@
   white-space: nowrap;
 }
 
-.rankBadges {
-  display: flex;
-  gap: 4px;
-}
-
 .cmcBadge {
   font-size: 9px;
   font-weight: 700;
@@ -244,39 +239,67 @@
   padding-top: 12px;
 }
 
-.activityHead {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: #9E9399;
-  margin-bottom: 8px;
-}
-
 .activityRow {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
-.activityStat {
+/* Left column — left-aligned */
+.activityCol {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  align-items: flex-start;
+}
+
+/* Center column — centered */
+.activityColCenter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  flex: 1;
+}
+
+/* Right column — right-aligned */
+.activityColRight {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
 }
 
 .activityLabel {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: #9E9399;
 }
 
 .activityVal {
   font-family: var(--font-title);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: #E8E6EE;
   letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.activitySubLabel {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #6E6A72;
+  margin-top: 4px;
+}
+
+.activitySubVal {
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
 }
 
 /* ---- Footer ---- */
