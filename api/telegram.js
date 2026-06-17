@@ -600,6 +600,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/cliff')) {
       await sendMessage(chatId, 'Spicy Chad.')
 
+    } else if (text.startsWith('/kenduwood')) {
+      await sendMessage(chatId, '3D Printed Chad.')
+
     } else if (text.startsWith('/wafe')) {
       await sendMessage(chatId, 'The Kendu wafe starts with small volume increases')
 
