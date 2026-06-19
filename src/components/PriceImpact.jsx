@@ -51,13 +51,12 @@ function fmtTokens(n) {
 }
 
 function fmtPct(pct) {
-  if (!isFinite(pct)) return '—'
+  if (!isFinite(pct)) return ''
   return (pct > 0 ? '+' : '') + pct.toFixed(2) + '%'
 }
 
 const CHAINS      = ['eth', 'base', 'sol']
 const CHAIN_LABEL = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
-const CHAIN_COLOR = { eth: 'var(--accent)', base: 'var(--accent2)', sol: 'var(--accent3)' }
 const ARB_EFF     = 0.6
 
 export default function PriceImpact({ collapsed, onToggle }) {
@@ -126,7 +125,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const tradeUSD = parseAmount(tradeInput)
   const mcResult = isFinite(tradeUSD) && tradeUSD > 0 ? calcMCImpact(currentMC, effLiq, tradeUSD) : null
 
-  // New LP depth per chain: distribute 2×trade inflow proportionally by each chain's weight in effLiq
   const newLiquidity = mcResult && effLiq > 0
     ? Object.fromEntries(CHAINS.map(chain => {
         const liq    = liquidity[chain]
@@ -143,26 +141,11 @@ export default function PriceImpact({ collapsed, onToggle }) {
       }))
     : null
 
-  const Chip = ({ label, value, sub, chainColor, className = '' }) => (
-    <div
-      className={`${styles.chip} ${chainColor ? styles.chipChain : ''} ${className}`}
-      style={chainColor ? { '--chain-color': chainColor } : undefined}
-    >
-      <div className={styles.chipLabel}>{label}</div>
-      <div className={styles.chipVal}>{value ?? '—'}</div>
-      {sub && <div className={styles.chipSub}>{sub}</div>}
-    </div>
-  )
-
-  const EditChip = ({ label, value, placeholder, onChange }) => (
-    <div className={`${styles.chip} ${styles.chipEditable}`}>
-      <div className={styles.chipLabel}>{label}</div>
-      <input
-        className={styles.chipInput}
-        placeholder={placeholder}
-        value={value}
-        onChange={e => onChange(e.target.value.replace(/^\$/, ''))}
-      />
+  const Card = ({ label, value, sub, subClass }) => (
+    <div className={styles.outputCard}>
+      <div className={styles.outputLabel}>{label}</div>
+      <div className={styles.outputVal}>{value ?? '—'}</div>
+      <div className={`${styles.outputSub} ${subClass || ''}`}>{sub ?? ''}</div>
     </div>
   )
 
@@ -180,59 +163,72 @@ export default function PriceImpact({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
-        <div className={styles.grid}>
 
-          {/* Row 1: Buy Amount | Current MC | Target MC */}
-          <EditChip
-            label="Buy Amount"
-            placeholder="50K, 1M…"
-            value={tradeInput}
-            onChange={handleTradeChange}
-          />
-          <Chip
-            label="Current MC"
-            value={currentMC ? fmtUSD(currentMC) : null}
-            sub={mcResult ? fmtPct(mcResult.pctChange) : undefined}
-          />
-          <EditChip
-            label="Target MC"
-            placeholder="100M, 1B…"
-            value={targetInput}
-            onChange={handleTargetChange}
-          />
+        {/* Input row — matches Calculator style */}
+        <div className={styles.inputRow}>
+          <div className={styles.inputCol}>
+            <div className="k-eyebrow">Buy Amount</div>
+            <div className={styles.usdWrap}>
+              <span className={styles.usdPrefix}>$</span>
+              <input
+                className={styles.input}
+                placeholder="1000, 50K, 1M"
+                value={tradeInput}
+                onChange={e => handleTradeChange(e.target.value.replace(/^\$/, ''))}
+              />
+            </div>
+          </div>
+          <div className={styles.inputCol}>
+            <div className="k-eyebrow">Target MC</div>
+            <div className={styles.usdWrap}>
+              <span className={styles.usdPrefix}>$</span>
+              <input
+                className={styles.input}
+                placeholder="100M, 1B, 5B"
+                value={targetInput}
+                onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
+              />
+            </div>
+            {mcResult && (
+              <div className={`${styles.inputSub} pos`}>
+                {fmtPct(mcResult.pctChange)} MC increase
+              </div>
+            )}
+          </div>
+        </div>
 
-          {/* Row 2: Current LP per chain */}
+        {/* Row 1: Current LP per chain */}
+        <div className={styles.outputGrid}>
           {CHAINS.map(chain => (
-            <Chip
+            <Card
               key={`liq-${chain}`}
               label={`${CHAIN_LABEL[chain]} Liquidity`}
               value={liquidity[chain] != null ? fmtUSD(liquidity[chain]) : null}
-              chainColor={CHAIN_COLOR[chain]}
             />
           ))}
 
-          {/* Row 3: New LP per chain after buy */}
+          {/* Row 2: New LP per chain */}
           {CHAINS.map(chain => (
-            <Chip
+            <Card
               key={`newliq-${chain}`}
               label={`${CHAIN_LABEL[chain]} New LP`}
               value={newLiquidity?.[chain] != null ? fmtUSD(newLiquidity[chain]) : '—'}
-              sub={newLiquidity?.[chain] && liquidity[chain] ? `+${fmtUSD(newLiquidity[chain] - liquidity[chain])}` : undefined}
-              chainColor={CHAIN_COLOR[chain]}
+              sub={newLiquidity?.[chain] && liquidity[chain]
+                ? `+${fmtUSD(newLiquidity[chain] - liquidity[chain])}`
+                : undefined}
+              subClass="pos"
             />
           ))}
 
-          {/* Row 4: Tokens received per chain */}
+          {/* Row 3: Tokens received per chain */}
           {CHAINS.map(chain => (
-            <Chip
+            <Card
               key={`tok-${chain}`}
               label={`${CHAIN_LABEL[chain]} Tokens`}
               value={tokens?.[chain] != null ? fmtTokens(tokens[chain]) : '—'}
-              sub="kendu"
-              chainColor={CHAIN_COLOR[chain]}
+              sub="KENDU"
             />
           ))}
-
         </div>
 
         {/* Disclaimer */}

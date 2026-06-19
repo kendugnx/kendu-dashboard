@@ -21,15 +21,72 @@
   letter-spacing: 0.12em;
 }
 
-/* ---- 3-col grid ---- */
-.grid {
+/* ---- Input row (matches Calculator exactly) ---- */
+.inputRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.inputCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  padding-left: 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent2-rgb), .4);
+  background: var(--card);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  outline: none;
+  text-transform: uppercase;
+  height: 40px;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--accent2); }
+.input::placeholder { color: var(--muted); font-weight: 500; text-transform: uppercase; }
+
+.usdWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.usdPrefix {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inputSub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  min-height: 1.2em;
+}
+
+/* ---- Output grid (matches Calculator .outputGrid / .outputCard) ---- */
+.outputGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
-/* ---- Base chip (matches Calculator .outputCard) ---- */
-.chip {
+.outputCard {
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid rgba(var(--accent2-rgb), .25);
@@ -43,57 +100,25 @@
   min-height: 72px;
 }
 
-/* Editable chip glows on focus-within */
-.chipEditable:focus-within {
-  border-color: var(--accent2);
-  background: rgba(var(--accent2-rgb), .06);
-}
-
-.chipLabel {
+.outputLabel {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--muted);
 }
 
-.chipVal {
+.outputVal {
   font-size: 22px;
   font-weight: 800;
   line-height: 1.15;
-  color: var(--fg);
 }
 
-.chipSub {
-  font-size: 10px;
+.outputSub {
+  font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.06em;
-}
-
-/* Invisible input that looks like chipVal */
-.chipInput {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--font-title);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.15;
-  color: var(--fg);
-  text-align: center;
-  width: 100%;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.chipInput::placeholder {
-  color: rgba(var(--accent2-rgb), .4);
-  font-weight: 600;
-  font-size: 16px;
-}
-
-/* Chain-accented top border */
-.chipChain {
-  border-top: 2px solid var(--chain-color, var(--accent2));
+  min-height: 1.2em;
 }
 
 /* ---- Disclaimer ---- */
@@ -132,7 +157,11 @@
 }
 
 /* ---- Responsive ---- */
-@media (max-width: 480px) {
-  .chipVal   { font-size: 16px; }
-  .chipInput { font-size: 16px; }
+@media (max-width: 720px) {
+  .inputRow   { grid-template-columns: 1fr; }
+  .outputVal  { font-size: 16px; }
+}
+
+@media (max-width: 420px) {
+  .outputVal  { font-size: 14px; }
 }
