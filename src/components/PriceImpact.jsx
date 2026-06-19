@@ -15,7 +15,7 @@ async function fetchV2LiquidityUSD(poolAddress) {
 }
 
 // ---- AMM math (constant-product v2 approximation) ----
-// Returns { newMC, pctChange, priceMultiplier }
+// Returns { newMC, pctChange, multiplier }
 function calcImpact(currentMC, liquidityUSD, tradeUSD, isBuy) {
   if (!isFinite(currentMC) || currentMC <= 0) return null
   if (!isFinite(liquidityUSD) || liquidityUSD <= 0) return null
@@ -29,39 +29,17 @@ function calcImpact(currentMC, liquidityUSD, tradeUSD, isBuy) {
   return { newMC, pctChange, multiplier }
 }
 
-// Given a desired price multiplier, find the trade size that produces it on a given pool
-function tradeForMultiplier(liquidityUSD, multiplier, isBuy) {
-  if (!isFinite(liquidityUSD) || liquidityUSD <= 0) return NaN
-  if (!isFinite(multiplier) || multiplier <= 0) return NaN
-  const quoteReserve = liquidityUSD / 2
-  if (isBuy) {
-    // multiplier = ((q + trade) / q)^2  →  trade = q * (sqrt(multiplier) - 1)
-    return quoteReserve * (Math.sqrt(multiplier) - 1)
-  } else {
-    // multiplier = (q / (q + trade))^2  →  trade = q * (1/sqrt(multiplier) - 1)
-    return quoteReserve * (1 / Math.sqrt(multiplier) - 1)
-  }
-}
-
 // Progressive: compound N trades in a row.
-// useArb=true → arb restores pool depth between each trade (each buy starts fresh against
-// full effective liquidity, just at the new higher price); pool depletion is NOT compounded.
-// useArb=false → no rebalancing between trades; pool depletes each step, so later buys hit harder.
-function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count, useArb) {
+// Arb restores pool depth between each trade (each buy starts fresh against full effective
+// liquidity at the new higher price) — pool depletion does not compound across trades.
+function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count) {
   let mc = currentMC
   let liq = effLiquidityUSD
-  const baseLiq = effLiquidityUSD
   for (let i = 0; i < count; i++) {
     const res = calcImpact(mc, liq, tradeUSD, isBuy)
     if (!res) break
     mc = res.newMC
-    if (useArb) {
-      // Pool depth restores via arb, but scales with the new price level
-      liq = baseLiq * res.multiplier
-    } else {
-      // Pool depletes — each subsequent trade has more impact
-      liq = liq * res.multiplier
-    }
+    liq = effLiquidityUSD * res.multiplier
   }
   const totalPct = ((mc / currentMC) - 1) * 100
   return { newMC: mc, pctChange: totalPct }
@@ -69,6 +47,10 @@ function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count, use
 
 const CHAIN_LABELS = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
 const CHAIN_COLORS = { eth: 'var(--accent)', base: 'var(--accent2)', sol: 'var(--accent3)' }
+
+// ETH pool is canonical and fully counts; Base + SOL provide partial resistance via
+// cross-chain arb but Wormhole bridging has latency/cost, so weight at 60%.
+const ARB_EFFICIENCY = 0.6
 
 export default function PriceImpact({ collapsed, onToggle }) {
   const [liquidity, setLiquidity] = useState({ eth: null, base: null, sol: null })
@@ -79,7 +61,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const [tradeInput,  setTradeInput]  = useState('')
   const [sourceChain, setSourceChain] = useState('eth')
   const [isBuy,       setIsBuy]       = useState(true)
-  const [useArb,      setUseArb]      = useState(true)
   const [progressive, setProgressive] = useState(false)
   const [tradeCount,  setTradeCount]  = useState('5')
 
@@ -121,44 +102,26 @@ export default function PriceImpact({ collapsed, onToggle }) {
   useEffect(() => { fetchLiquidity() }, [])
 
   // ---- Derived ----
-  const tradeUSD  = parseAmount(tradeInput)
-  const count     = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
-  const srcLiq    = liquidity[sourceChain]
-  // Arb efficiency: ETH pool is canonical and fully counts; Base + SOL provide partial
-  // resistance via cross-chain arb but bridging has latency/cost, so weight at 60%.
-  const ARB_EFFICIENCY = 0.6
-  const arbLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
-  const effLiq = useArb ? arbLiq : srcLiq
+  const tradeUSD = parseAmount(tradeInput)
+  const count    = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
+  const effLiq   = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
 
   // Primary impact result
   const result = isFinite(tradeUSD) && tradeUSD > 0 && effLiq > 0 && currentMC
     ? progressive
-      ? calcProgressive(currentMC, effLiq, tradeUSD, isBuy, count, useArb)
+      ? calcProgressive(currentMC, effLiq, tradeUSD, isBuy, count)
       : calcImpact(currentMC, effLiq, tradeUSD, isBuy)
     : null
 
-  // Arb ON: same $X on any chain → same global MC move (capital is capital).
-  // What differs is execution slippage per pool. slippage = tradeUSD / (quoteReserve + tradeUSD)
-  const chainSlippage = useArb && isFinite(tradeUSD) && tradeUSD > 0
+  // Per-chain execution slippage for the same trade amount.
+  // Same $X on any chain → same global MC move (capital is capital, arb equalizes).
+  // What differs is how much slippage you eat on each pool.
+  const chainSlippage = isFinite(tradeUSD) && tradeUSD > 0
     ? Object.fromEntries(
         Object.entries(liquidity).map(([chain, liq]) => {
           if (!liq) return [chain, null]
           const quoteReserve = liq / 2
           return [chain, (tradeUSD / (quoteReserve + tradeUSD)) * 100]
-        })
-      )
-    : null
-
-  // Arb OFF: isolated pools — what trade on each chain produces the same % local move?
-  const singleResult = !useArb && isFinite(tradeUSD) && tradeUSD > 0 && srcLiq > 0 && currentMC
-    ? calcImpact(currentMC, srcLiq, tradeUSD, isBuy)
-    : null
-  const equivTrades = singleResult
-    ? Object.fromEntries(
-        Object.entries(liquidity).map(([chain, liq]) => {
-          if (!liq || chain === sourceChain) return [chain, tradeUSD]
-          const equiv = tradeForMultiplier(liq, singleResult.multiplier, isBuy)
-          return [chain, equiv]
         })
       )
     : null
@@ -211,16 +174,24 @@ export default function PriceImpact({ collapsed, onToggle }) {
             >Sell</button>
           </div>
 
-          {/* Chain selector */}
+          {/* Progressive toggle */}
           <div className={styles.toggleGroup}>
-            {['eth','base','sol'].map(chain => (
-              <button
-                key={chain}
-                className={`k-chip ${sourceChain === chain ? 'active' : ''}`}
-                onClick={() => setSourceChain(chain)}
-              >{CHAIN_LABELS[chain]}</button>
-            ))}
+            <button className={`k-chip ${!progressive ? 'active' : ''}`} onClick={() => setProgressive(false)}>Single</button>
+            <button className={`k-chip ${progressive ? 'active' : ''}`}  onClick={() => setProgressive(true)}>Progressive</button>
           </div>
+
+          {progressive && (
+            <div className={styles.inputCol}>
+              <div className="k-eyebrow">Trade Count</div>
+              <input
+                className={styles.input}
+                placeholder="5"
+                value={tradeCount}
+                onChange={e => setTradeCount(e.target.value.replace(/\D/g, ''))}
+                style={{ width: '80px' }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Trade amount input */}
@@ -237,37 +208,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
               />
             </div>
           </div>
-
-          {/* Arb toggle */}
-          <div className={styles.inputCol}>
-            <div className="k-eyebrow">Arbitrage</div>
-            <div className={styles.toggleGroup}>
-              <button className={`k-chip ${useArb ? 'active' : ''}`} onClick={() => setUseArb(true)}>Instant</button>
-              <button className={`k-chip ${!useArb ? 'active' : ''}`} onClick={() => setUseArb(false)}>None</button>
-            </div>
-          </div>
-
-          {/* Progressive toggle */}
-          <div className={styles.inputCol}>
-            <div className="k-eyebrow">Mode</div>
-            <div className={styles.toggleGroup}>
-              <button className={`k-chip ${!progressive ? 'active' : ''}`} onClick={() => setProgressive(false)}>Single</button>
-              <button className={`k-chip ${progressive ? 'active' : ''}`}  onClick={() => setProgressive(true)}>Progressive</button>
-            </div>
-          </div>
-
-          {progressive && (
-            <div className={styles.inputCol}>
-              <div className="k-eyebrow">Trade Count</div>
-              <input
-                className={styles.input}
-                placeholder="5"
-                value={tradeCount}
-                onChange={e => setTradeCount(e.target.value.replace(/\D/g, ''))}
-                style={{ width: '80px' }}
-              />
-            </div>
-          )}
         </div>
 
         {/* Result */}
@@ -290,12 +230,12 @@ export default function PriceImpact({ collapsed, onToggle }) {
             <div className={styles.resultCard}>
               <div className={styles.resultLabel}>Effective Pool</div>
               <div className={styles.resultVal}>{fmtUSD(effLiq)}</div>
-              <div className={styles.resultSub}>{useArb ? 'all chains' : CHAIN_LABELS[sourceChain] + ' only'}</div>
+              <div className={styles.resultSub}>all chains</div>
             </div>
           </div>
         )}
 
-        {/* Arb ON: same trade on any chain = same MC move; show per-chain execution slippage */}
+        {/* Per-chain execution slippage */}
         {chainSlippage && result && (
           <div className={styles.equivSection}>
             <div className={styles.equivHeader}>
@@ -320,38 +260,13 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
         )}
 
-        {/* Arb OFF: isolated pools — trade size on each chain for the same % local move */}
-        {equivTrades && singleResult && (
-          <div className={styles.equivSection}>
-            <div className={styles.equivHeader}>
-              Equivalent {fmtPctChange(singleResult.pctChange)} move — each chain in isolation (no arb)
-            </div>
-            <div className={styles.equivGrid}>
-              {['eth','base','sol'].map(chain => (
-                <div key={chain} className={styles.equivCard} style={{ '--chain-color': CHAIN_COLORS[chain] }}>
-                  <div className={styles.equivChain}>{CHAIN_LABELS[chain]}</div>
-                  <div className={styles.equivVal}>
-                    {chain === sourceChain
-                      ? fmtUSD(tradeUSD)
-                      : isFinite(equivTrades[chain]) ? fmtUSD(equivTrades[chain]) : '—'}
-                  </div>
-                  {chain === sourceChain && <div className={styles.equivSub}>source</div>}
-                  {chain !== sourceChain && liquidity[chain] != null && (
-                    <div className={styles.equivSub}>liq: {fmtUSD(liquidity[chain])}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Disclaimers */}
         <div className={styles.disclaimer}>
           <div className={styles.disclaimerTitle}>Estimates only — not financial advice</div>
           <ul className={styles.disclaimerList}>
             <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity is fetched directly from the Uniswap V2 pool contract for accuracy. BASE (Aerodrome) and SOL (Raydium) use reported liquidity from DexScreener.</li>
-            <li>"Instant arb" weights ETH liquidity at 100% and BASE/SOL at 60% — cross-chain arb via Wormhole has bridging latency and gas cost that reduces its effectiveness.</li>
-            <li>Progressive mode: with arb on, pool depth restores between each trade (at the new price level); with arb off, pool depletes each step so later buys hit harder.</li>
+            <li>ETH pool is weighted at 100%; BASE and SOL at 60% — cross-chain arb via Wormhole has bridging latency and gas cost that reduces their effective contribution.</li>
+            <li>Progressive mode compounds trades sequentially; arb restores pool depth between each trade at the new price level.</li>
             <li>Liquidity snapshots are live but can change rapidly with LP adds/removes.</li>
           </ul>
         </div>
