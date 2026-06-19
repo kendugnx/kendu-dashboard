@@ -657,10 +657,7 @@ export default async function handler(req, res) {
 
       if (!amtStr || !amt) {
         await sendMessage(chatId,
-          `<b>Price Impact Calculator</b>\n\n` +
-          `Usage:\n` +
-          `<code>/impact 50k</code> — buy amount → MC impact + tokens\n` +
-          `<code>/impact mc 1b</code> — target MC → required buy`
+          `<b>Usage:</b>\n/impact [buy amount] — e.g. /impact 50k\n/impact mc [target MC] — e.g. /impact mc 1b`
         )
       } else {
         const { currentMC, liquidity, effLiq } = await getImpactData()
