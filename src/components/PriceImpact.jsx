@@ -137,7 +137,10 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const tokens = isFinite(tradeUSD) && tradeUSD > 0 && price
     ? Object.fromEntries(CHAINS.map(chain => {
         const liq = liquidity[chain]
-        return [chain, liq ? calcTokensReceived(liq, price, tradeUSD) : null]
+        if (!liq) return [chain, null]
+        const received = calcTokensReceived(liq, price, tradeUSD)
+        const slippage = tradeUSD / (liq / 2 + tradeUSD) * 100
+        return [chain, { received, slippage }]
       }))
     : null
 
@@ -180,20 +183,22 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
           <div className={styles.inputCol}>
             <div className="k-eyebrow">Target MC</div>
-            <div className={styles.usdWrap}>
-              <span className={styles.usdPrefix}>$</span>
-              <input
-                className={styles.input}
-                placeholder="100M, 1B, 5B"
-                value={targetInput}
-                onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
-              />
-            </div>
-            {mcResult && (
-              <div className={`${styles.inputSub} pos`}>
-                {fmtPct(mcResult.pctChange)} MC increase
+            <div className={styles.targetRow}>
+              <div className={styles.usdWrap}>
+                <span className={styles.usdPrefix}>$</span>
+                <input
+                  className={styles.input}
+                  placeholder="100M, 1B, 5B"
+                  value={targetInput}
+                  onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
+                />
               </div>
-            )}
+              {mcResult && (
+                <span className="pos" style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.04em' }}>
+                  +{fmtUSD(mcResult.newMC - currentMC)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -221,14 +226,17 @@ export default function PriceImpact({ collapsed, onToggle }) {
           ))}
 
           {/* Row 3: Tokens received per chain */}
-          {CHAINS.map(chain => (
-            <Card
-              key={`tok-${chain}`}
-              label={`${CHAIN_LABEL[chain]} Tokens`}
-              value={tokens?.[chain] != null ? fmtTokens(tokens[chain]) : '—'}
-              sub="KENDU"
-            />
-          ))}
+          {CHAINS.map(chain => {
+            const t = tokens?.[chain]
+            return (
+              <Card
+                key={`tok-${chain}`}
+                label={`${CHAIN_LABEL[chain]} Tokens`}
+                value={t ? fmtTokens(t.received) : '—'}
+                sub={t ? `${t.slippage.toFixed(2)}% slippage` : ''}
+              />
+            )
+          })}
         </div>
 
         {/* Disclaimer */}

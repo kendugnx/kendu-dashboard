@@ -61,6 +61,12 @@
   align-items: center;
 }
 
+.targetRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .usdPrefix {
   position: absolute;
   left: 12px;
