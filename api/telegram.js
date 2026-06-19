@@ -4,6 +4,9 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const SUPPLY = 996.74e9
 const KENDU_ETH_CA  = '0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18'
 const LP_ETH        = '0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
+const LP_BASE       = '0xFBFD0e1838A101a26FDB5D4ae0B4D17153eCA66B'
+const LP_SOL        = 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK'
+const ARB_EFF       = 0.6
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
 
 // Curated CEX hot wallets excluded from HHI (EOAs, can't be detected on-chain) --
@@ -166,6 +169,51 @@ function hhiLabel(hhi) {
   if (hhi < 1500) return 'Low'
   if (hhi < 2500) return 'Moderate'
   return 'High'
+}
+
+async function getImpactData() {
+  const DEX = 'https://api.dexscreener.com/latest/dex/pairs'
+  const [ethRes, baseRes, solRes, onChainRes] = await Promise.allSettled([
+    fetch(`${DEX}/ethereum/${LP_ETH}`, { cache: 'no-store' }),
+    fetch(`${DEX}/base/${LP_BASE}`,    { cache: 'no-store' }),
+    fetch(`${DEX}/solana/${LP_SOL}`,   { cache: 'no-store' }),
+    fetch(`https://kendu-dashboard.com/api/reserves?pool=${LP_ETH}`, { cache: 'no-store' }),
+  ])
+  const parsePair = res => {
+    if (res.status !== 'fulfilled') return {}
+    return res.value.json().then(j => {
+      const pair = j?.pairs?.[0] || j?.pair
+      return { liq: Number(pair?.liquidity?.usd || 0), mc: Number(pair?.marketCap || 0) }
+    }).catch(() => ({}))
+  }
+  const [eth, base, sol] = await Promise.all([parsePair(ethRes), parsePair(baseRes), parsePair(solRes)])
+  let ethLiq = eth.liq || 0
+  if (onChainRes.status === 'fulfilled') {
+    const j = await onChainRes.value.json().catch(() => ({}))
+    if (j.liquidityUSD > 0) ethLiq = j.liquidityUSD
+  }
+  const currentMC = eth.mc || base.mc || sol.mc || null
+  const liquidity = { eth: ethLiq || null, base: base.liq || null, sol: sol.liq || null }
+  const effLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFF
+  return { currentMC, liquidity, effLiq }
+}
+
+function impactCalcMC(currentMC, effLiq, tradeUSD) {
+  const q    = effLiq / 2
+  const mult = Math.pow((q + tradeUSD) / q, 2)
+  return { newMC: currentMC * mult, pctChange: (mult - 1) * 100 }
+}
+
+function impactTokens(chainLiq, price, tradeUSD) {
+  if (!chainLiq || !price || !tradeUSD) return null
+  const q  = chainLiq / 2
+  const x0 = q / price
+  return x0 - (x0 * q) / (q + tradeUSD)
+}
+
+function impactRequiredBuy(currentMC, effLiq, targetMC) {
+  if (targetMC <= currentMC || !effLiq) return null
+  return (effLiq / 2) * (Math.sqrt(targetMC / currentMC) - 1)
 }
 
 async function getVolumeCandles(days) {
@@ -367,6 +415,7 @@ export default async function handler(req, res) {
         `/wen — X to MC\n` +
         `/calc — Holdings value calculator\n` +
         `/gains — Gains calculator\n` +
+        `/impact — Price impact calculator\n` +
         `/holders — Holders chart\n` +
         `/volume — Volume chart\n` +
         `/snapshot — Generate 24h snapshot\n` +
@@ -599,6 +648,61 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/cliff')) {
       await sendMessage(chatId, 'Spicy Chad.')
+
+    } else if (text.startsWith('/impact')) {
+      const args = text.replace('/impact', '').trim()
+      const isMCMode = args.startsWith('mc ')
+      const amtStr   = isMCMode ? args.slice(3).trim() : args
+      const amt      = parseMC(amtStr)
+
+      if (!amtStr || !amt) {
+        await sendMessage(chatId,
+          `<b>Price Impact Calculator</b>\n\n` +
+          `Usage:\n` +
+          `<code>/impact 50k</code> — buy amount → MC impact + tokens\n` +
+          `<code>/impact mc 1b</code> — target MC → required buy`
+        )
+      } else {
+        const { currentMC, liquidity, effLiq } = await getImpactData()
+        if (!currentMC || !effLiq) throw new Error('Could not fetch market data')
+        const price = currentMC / SUPPLY
+
+        if (isMCMode) {
+          const required = impactRequiredBuy(currentMC, effLiq, amt)
+          if (!required || required <= 0) {
+            await sendMessage(chatId, `Target MC must be higher than current MC (${fmt(currentMC)}).`)
+          } else {
+            const { pctChange } = impactCalcMC(currentMC, effLiq, required)
+            await sendMessage(chatId,
+              `<b>Price Impact — Target MC</b>\n\n` +
+              `Current MC: <b>${fmt(currentMC)}</b>\n` +
+              `Target MC: <b>${fmt(amt)}</b> <i>(+${pctChange.toFixed(1)}%)</i>\n\n` +
+              `Required Buy: <b>${fmt(required)}</b>`
+            )
+          }
+        } else {
+          const { newMC, pctChange } = impactCalcMC(currentMC, effLiq, amt)
+          const CHAIN_NAMES = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
+          const chainLines = ['eth', 'base', 'sol'].map(chain => {
+            const liq = liquidity[chain]
+            if (!liq) return null
+            const received = impactTokens(liq, price, amt)
+            const slippage = amt / (liq / 2 + amt) * 100
+            const tokStr   = received >= 1e9 ? (received / 1e9).toFixed(2) + 'B'
+                           : received >= 1e6 ? (received / 1e6).toFixed(2) + 'M'
+                           : received.toFixed(0)
+            return `${CHAIN_NAMES[chain]}: <b>${tokStr} KENDU</b> (${slippage.toFixed(2)}% slip)`
+          }).filter(Boolean)
+
+          await sendMessage(chatId,
+            `<b>Price Impact — Buy ${fmt(amt)}</b>\n\n` +
+            `Current MC: <b>${fmt(currentMC)}</b>\n` +
+            `New MC: <b>${fmt(newMC)}</b> <i>(+${pctChange.toFixed(1)}%)</i>\n\n` +
+            `<b>Tokens Received:</b>\n` +
+            chainLines.join('\n')
+          )
+        }
+      }
 
     } else if (text.startsWith('/kenduwood')) {
       await sendMessage(chatId, '3D Printed Chad.')
