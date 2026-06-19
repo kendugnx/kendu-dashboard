@@ -137,10 +137,20 @@ export default function PriceImpact({ collapsed, onToggle }) {
       : calcImpact(currentMC, effLiq, tradeUSD, isBuy)
     : null
 
-  // Equivalent trade sizes: always use single-chain (no-arb) math per pool.
-  // This answers "how much on each chain IN ISOLATION produces the same % move?"
-  // Consistent regardless of arb toggle — the arb toggle only affects the main result.
-  const singleResult = isFinite(tradeUSD) && tradeUSD > 0 && srcLiq > 0 && currentMC
+  // Arb ON: same $X on any chain → same global MC move (capital is capital).
+  // What differs is execution slippage per pool. slippage = tradeUSD / (quoteReserve + tradeUSD)
+  const chainSlippage = useArb && isFinite(tradeUSD) && tradeUSD > 0
+    ? Object.fromEntries(
+        Object.entries(liquidity).map(([chain, liq]) => {
+          if (!liq) return [chain, null]
+          const quoteReserve = liq / 2
+          return [chain, (tradeUSD / (quoteReserve + tradeUSD)) * 100]
+        })
+      )
+    : null
+
+  // Arb OFF: isolated pools — what trade on each chain produces the same % local move?
+  const singleResult = !useArb && isFinite(tradeUSD) && tradeUSD > 0 && srcLiq > 0 && currentMC
     ? calcImpact(currentMC, srcLiq, tradeUSD, isBuy)
     : null
   const equivTrades = singleResult
@@ -285,11 +295,36 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
         )}
 
-        {/* Equivalent trades across chains */}
+        {/* Arb ON: same trade on any chain = same MC move; show per-chain execution slippage */}
+        {chainSlippage && result && (
+          <div className={styles.equivSection}>
+            <div className={styles.equivHeader}>
+              {fmtUSD(tradeUSD)} on any chain → same {fmtPctChange(result.pctChange)} MC move — execution slippage varies by pool depth
+            </div>
+            <div className={styles.equivGrid}>
+              {['eth','base','sol'].map(chain => {
+                const slip = chainSlippage[chain]
+                return (
+                  <div key={chain} className={styles.equivCard} style={{ '--chain-color': CHAIN_COLORS[chain] }}>
+                    <div className={styles.equivChain}>{CHAIN_LABELS[chain]}</div>
+                    <div className={styles.equivVal}>
+                      {slip != null ? slip.toFixed(2) + '%' : '—'}
+                    </div>
+                    <div className={styles.equivSub}>
+                      {liquidity[chain] != null ? `liq: ${fmtUSD(liquidity[chain])}` : 'no data'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Arb OFF: isolated pools — trade size on each chain for the same % local move */}
         {equivTrades && singleResult && (
           <div className={styles.equivSection}>
             <div className={styles.equivHeader}>
-              Equivalent {fmtPctChange(singleResult.pctChange)} impact — each chain in isolation (no arb)
+              Equivalent {fmtPctChange(singleResult.pctChange)} move — each chain in isolation (no arb)
             </div>
             <div className={styles.equivGrid}>
               {['eth','base','sol'].map(chain => (
