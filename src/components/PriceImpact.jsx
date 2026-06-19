@@ -162,6 +162,17 @@ export default function PriceImpact({ collapsed, onToggle }) {
 
         {/* Controls row */}
         <div className={styles.controlsRow}>
+          {/* Trade size */}
+          <div className={styles.usdWrap}>
+            <span className={styles.usdPrefix}>$</span>
+            <input
+              className={styles.input}
+              placeholder="1000, 50K, 1M"
+              value={tradeInput}
+              onChange={e => setTradeInput(e.target.value.replace(/^\$/, ''))}
+            />
+          </div>
+
           {/* Buy / Sell */}
           <div className={styles.toggleGroup}>
             <button
@@ -181,33 +192,14 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
 
           {progressive && (
-            <div className={styles.inputCol}>
-              <div className="k-eyebrow">Trade Count</div>
-              <input
-                className={styles.input}
-                placeholder="5"
-                value={tradeCount}
-                onChange={e => setTradeCount(e.target.value.replace(/\D/g, ''))}
-                style={{ width: '80px' }}
-              />
-            </div>
+            <input
+              className={styles.input}
+              placeholder="5"
+              value={tradeCount}
+              onChange={e => setTradeCount(e.target.value.replace(/\D/g, ''))}
+              style={{ width: '60px' }}
+            />
           )}
-        </div>
-
-        {/* Trade amount input */}
-        <div className={styles.inputRow}>
-          <div className={styles.inputCol}>
-            <div className="k-eyebrow">Trade Size (USD)</div>
-            <div className={styles.usdWrap}>
-              <span className={styles.usdPrefix}>$</span>
-              <input
-                className={styles.input}
-                placeholder="1000, 50K, 1M"
-                value={tradeInput}
-                onChange={e => setTradeInput(e.target.value.replace(/^\$/, ''))}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Result */}
