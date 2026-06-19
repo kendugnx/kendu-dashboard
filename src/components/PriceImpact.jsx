@@ -55,15 +55,15 @@ function fmtPct(pct) {
   return (pct > 0 ? '+' : '') + pct.toFixed(2) + '%'
 }
 
-const CHAIN_LABELS = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
-const CHAIN_COLORS = { eth: 'var(--accent)', base: 'var(--accent2)', sol: 'var(--accent3)' }
-const ARB_EFFICIENCY = 0.6
+const CHAINS      = ['eth', 'base', 'sol']
+const CHAIN_LABEL = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
+const CHAIN_COLOR = { eth: 'var(--accent)', base: 'var(--accent2)', sol: 'var(--accent3)' }
+const ARB_EFF     = 0.6
 
 export default function PriceImpact({ collapsed, onToggle }) {
   const [liquidity, setLiquidity] = useState({ eth: null, base: null, sol: null })
   const [currentMC, setCurrentMC] = useState(null)
   const [updatedTs, setUpdatedTs] = useState(null)
-
   const [tradeInput,  setTradeInput]  = useState('')
   const [targetInput, setTargetInput] = useState('')
 
@@ -81,7 +81,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
       ),
       fetchV2LiquidityUSD(LPS.eth.address).catch(() => null),
     ])
-
     const liqMap = { eth: null, base: null, sol: null }
     let bestMC = null
     for (const res of dexResults) {
@@ -99,10 +98,9 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const { spinning, trigger } = useRefresh(fetchLiquidity)
   useEffect(() => { fetchLiquidity() }, [])
 
-  const effLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
+  const effLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFF
   const price  = currentMC ? currentMC / CIRC_SUPPLY : null
 
-  // Bidirectional: typing buy amount → derives target MC; typing target MC → derives buy amount
   const handleTradeChange = val => {
     setTradeInput(val)
     const usd = parseAmount(val)
@@ -125,18 +123,48 @@ export default function PriceImpact({ collapsed, onToggle }) {
     }
   }
 
-  // All results derive from tradeInput (always populated, either by user or derived)
   const tradeUSD = parseAmount(tradeInput)
-  const mcResult = isFinite(tradeUSD) && tradeUSD > 0 && effLiq > 0 && currentMC
-    ? calcMCImpact(currentMC, effLiq, tradeUSD)
+  const mcResult = isFinite(tradeUSD) && tradeUSD > 0 ? calcMCImpact(currentMC, effLiq, tradeUSD) : null
+
+  // New LP depth per chain: distribute 2×trade inflow proportionally by each chain's weight in effLiq
+  const newLiquidity = mcResult && effLiq > 0
+    ? Object.fromEntries(CHAINS.map(chain => {
+        const liq    = liquidity[chain]
+        if (!liq) return [chain, null]
+        const weight = chain === 'eth' ? liq : liq * ARB_EFF
+        return [chain, liq + 2 * tradeUSD * (weight / effLiq)]
+      }))
     : null
 
-  const tokenResults = isFinite(tradeUSD) && tradeUSD > 0 && price
-    ? Object.fromEntries(['eth','base','sol'].map(chain => {
+  const tokens = isFinite(tradeUSD) && tradeUSD > 0 && price
+    ? Object.fromEntries(CHAINS.map(chain => {
         const liq = liquidity[chain]
         return [chain, liq ? calcTokensReceived(liq, price, tradeUSD) : null]
       }))
     : null
+
+  const Chip = ({ label, value, sub, chainColor, className = '' }) => (
+    <div
+      className={`${styles.chip} ${chainColor ? styles.chipChain : ''} ${className}`}
+      style={chainColor ? { '--chain-color': chainColor } : undefined}
+    >
+      <div className={styles.chipLabel}>{label}</div>
+      <div className={styles.chipVal}>{value ?? '—'}</div>
+      {sub && <div className={styles.chipSub}>{sub}</div>}
+    </div>
+  )
+
+  const EditChip = ({ label, value, placeholder, onChange }) => (
+    <div className={`${styles.chip} ${styles.chipEditable}`}>
+      <div className={styles.chipLabel}>{label}</div>
+      <input
+        className={styles.chipInput}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value.replace(/^\$/, ''))}
+      />
+    </div>
+  )
 
   return (
     <div className={`k-card ${styles.wrap}`}>
@@ -152,81 +180,60 @@ export default function PriceImpact({ collapsed, onToggle }) {
       </div>
 
       <div className={`k-body${collapsed ? ' k-collapsed' : ''}`}><div className="k-body-inner">
+        <div className={styles.grid}>
 
-        {/* Pool liquidity */}
-        <div className={styles.poolRow}>
-          {['eth','base','sol'].map(chain => (
-            <div key={chain} className={styles.poolCard} style={{ '--chain-color': CHAIN_COLORS[chain] }}>
-              <div className={styles.poolLabel}>{CHAIN_LABELS[chain]} Liquidity</div>
-              <div className={styles.poolVal}>{liquidity[chain] != null ? fmtUSD(liquidity[chain]) : '—'}</div>
-            </div>
+          {/* Row 1: Buy Amount | Current MC | Target MC */}
+          <EditChip
+            label="Buy Amount"
+            placeholder="50K, 1M…"
+            value={tradeInput}
+            onChange={handleTradeChange}
+          />
+          <Chip
+            label="Current MC"
+            value={currentMC ? fmtUSD(currentMC) : null}
+            sub={mcResult ? fmtPct(mcResult.pctChange) : undefined}
+          />
+          <EditChip
+            label="Target MC"
+            placeholder="100M, 1B…"
+            value={targetInput}
+            onChange={handleTargetChange}
+          />
+
+          {/* Row 2: Current LP per chain */}
+          {CHAINS.map(chain => (
+            <Chip
+              key={`liq-${chain}`}
+              label={`${CHAIN_LABEL[chain]} Liquidity`}
+              value={liquidity[chain] != null ? fmtUSD(liquidity[chain]) : null}
+              chainColor={CHAIN_COLOR[chain]}
+            />
           ))}
+
+          {/* Row 3: New LP per chain after buy */}
+          {CHAINS.map(chain => (
+            <Chip
+              key={`newliq-${chain}`}
+              label={`${CHAIN_LABEL[chain]} New LP`}
+              value={newLiquidity?.[chain] != null ? fmtUSD(newLiquidity[chain]) : '—'}
+              sub={newLiquidity?.[chain] && liquidity[chain] ? `+${fmtUSD(newLiquidity[chain] - liquidity[chain])}` : undefined}
+              chainColor={CHAIN_COLOR[chain]}
+            />
+          ))}
+
+          {/* Row 4: Tokens received per chain */}
+          {CHAINS.map(chain => (
+            <Chip
+              key={`tok-${chain}`}
+              label={`${CHAIN_LABEL[chain]} Tokens`}
+              value={tokens?.[chain] != null ? fmtTokens(tokens[chain]) : '—'}
+              sub="kendu"
+              chainColor={CHAIN_COLOR[chain]}
+            />
+          ))}
+
         </div>
-
-        {/* Bidirectional inputs */}
-        <div className={styles.inputRow}>
-          <div className={styles.inputCol}>
-            <div className="k-eyebrow">Buy Amount</div>
-            <div className={styles.usdWrap}>
-              <span className={styles.usdPrefix}>$</span>
-              <input
-                className={styles.input}
-                placeholder="1000, 50K, 1M"
-                value={tradeInput}
-                onChange={e => handleTradeChange(e.target.value.replace(/^\$/, ''))}
-              />
-            </div>
-          </div>
-          <div className={styles.inputCol}>
-            <div className="k-eyebrow">Target MC</div>
-            <div className={styles.usdWrap}>
-              <span className={styles.usdPrefix}>$</span>
-              <input
-                className={styles.input}
-                placeholder="100M, 1B, 5B"
-                value={targetInput}
-                onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* MC impact */}
-        {mcResult && (
-          <div className={styles.resultGrid}>
-            <div className={styles.resultCard}>
-              <div className={styles.resultLabel}>Current MC</div>
-              <div className={styles.resultVal}>{fmtUSD(currentMC)}</div>
-            </div>
-            <div className={`${styles.resultCard} ${styles.resultMain}`}>
-              <div className={styles.resultLabel}>New MC</div>
-              <div className={styles.resultVal}>{fmtUSD(mcResult.newMC)}</div>
-              <div className={mcResult.pctChange >= 0 ? 'pos' : 'neg'} style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
-                {fmtPct(mcResult.pctChange)}
-              </div>
-            </div>
-            <div className={styles.resultCard}>
-              <div className={styles.resultLabel}>Buy Amount</div>
-              <div className={styles.resultVal}>{fmtUSD(tradeUSD)}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Tokens received per chain */}
-        {tokenResults && (
-          <div className={styles.equivSection}>
-            <div className={styles.equivHeader}>Tokens received per chain</div>
-            <div className={styles.equivGrid}>
-              {['eth','base','sol'].map(chain => (
-                <div key={chain} className={styles.equivCard} style={{ '--chain-color': CHAIN_COLORS[chain] }}>
-                  <div className={styles.equivChain}>{CHAIN_LABELS[chain]}</div>
-                  <div className={styles.equivVal}>{fmtTokens(tokenResults[chain])}</div>
-                  <div className={styles.equivSub}>kendu</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Disclaimer */}
         <div className={styles.disclaimer}>
@@ -234,7 +241,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
           <ul className={styles.disclaimerList}>
             <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity fetched from Uniswap V2 contract on-chain. BASE and SOL use DexScreener reported liquidity.</li>
             <li>MC impact uses combined effective liquidity: ETH at 100%, BASE and SOL at 60% — Wormhole bridging latency reduces their arb contribution.</li>
-            <li>Tokens received calculated per chain independently using each pool's depth.</li>
+            <li>New LP depths and tokens received are estimated per chain proportionally to each pool's weight.</li>
           </ul>
         </div>
 
