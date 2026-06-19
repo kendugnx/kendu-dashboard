@@ -42,7 +42,7 @@ function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count) {
     liq = isBuy ? liq + 2 * tradeUSD : Math.max(0, liq - 2 * tradeUSD)
   }
   const totalPct = ((mc / currentMC) - 1) * 100
-  return { newMC: mc, pctChange: totalPct }
+  return { newMC: mc, pctChange: totalPct, finalLiq: liq }
 }
 
 const CHAIN_LABELS = { eth: 'ETH', base: 'BASE', sol: 'SOL' }
@@ -102,15 +102,34 @@ export default function PriceImpact({ collapsed, onToggle }) {
   useEffect(() => { fetchLiquidity() }, [])
 
   // ---- Derived ----
-  const tradeUSD = parseAmount(tradeInput)
-  const count    = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
-  const effLiq   = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
+  const tradeUSD  = parseAmount(tradeInput)
+  const count     = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
+  const totalUSD  = progressive ? tradeUSD * count : tradeUSD
+  const effLiq    = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
 
   // Primary impact result
   const result = isFinite(tradeUSD) && tradeUSD > 0 && effLiq > 0 && currentMC
     ? progressive
       ? calcProgressive(currentMC, effLiq, tradeUSD, isBuy, count)
       : calcImpact(currentMC, effLiq, tradeUSD, isBuy)
+    : null
+
+  // Final combined pool depth after all trades
+  const finalLiq = result
+    ? progressive
+      ? result.finalLiq
+      : isBuy ? effLiq + 2 * tradeUSD : Math.max(0, effLiq - 2 * tradeUSD)
+    : null
+
+  // Distribute finalLiq growth back to per-chain depths proportionally
+  const finalChainLiq = finalLiq && effLiq > 0
+    ? Object.fromEntries(
+        Object.entries(liquidity).map(([chain, liq]) => {
+          if (!liq) return [chain, null]
+          const weight = chain === 'eth' ? liq : liq * ARB_EFFICIENCY
+          return [chain, liq + (finalLiq - effLiq) * (weight / effLiq)]
+        })
+      )
     : null
 
   // Per-chain execution slippage for the same trade amount.
@@ -204,27 +223,51 @@ export default function PriceImpact({ collapsed, onToggle }) {
 
         {/* Result */}
         {result && (
-          <div className={styles.resultGrid}>
-            <div className={styles.resultCard}>
-              <div className={styles.resultLabel}>Current MC</div>
-              <div className={styles.resultVal}>{fmtUSD(currentMC)}</div>
-            </div>
-            <div className={`${styles.resultCard} ${styles.resultMain}`}>
-              <div className={styles.resultLabel}>
-                New MC
-                {progressive ? ` (${count}× ${isBuy ? 'buys' : 'sells'})` : ''}
+          <>
+            <div className={styles.resultGrid}>
+              <div className={styles.resultCard}>
+                <div className={styles.resultLabel}>Current MC</div>
+                <div className={styles.resultVal}>{fmtUSD(currentMC)}</div>
               </div>
-              <div className={styles.resultVal}>{fmtUSD(result.newMC)}</div>
-              <div className={result.pctChange >= 0 ? 'pos' : 'neg'} style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
-                {fmtPctChange(result.pctChange)}
+              <div className={`${styles.resultCard} ${styles.resultMain}`}>
+                <div className={styles.resultLabel}>
+                  New MC
+                  {progressive ? ` (${count}× ${isBuy ? 'buys' : 'sells'})` : ''}
+                </div>
+                <div className={styles.resultVal}>{fmtUSD(result.newMC)}</div>
+                <div className={result.pctChange >= 0 ? 'pos' : 'neg'} style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+                  {fmtPctChange(result.pctChange)}
+                </div>
+              </div>
+              <div className={styles.resultCard}>
+                <div className={styles.resultLabel}>{progressive ? 'Total Buy' : 'Trade Size'}</div>
+                <div className={styles.resultVal}>{fmtUSD(totalUSD)}</div>
+                {progressive && <div className={styles.resultSub}>{count} × {fmtUSD(tradeUSD)}</div>}
               </div>
             </div>
-            <div className={styles.resultCard}>
-              <div className={styles.resultLabel}>Effective Pool</div>
-              <div className={styles.resultVal}>{fmtUSD(effLiq)}</div>
-              <div className={styles.resultSub}>all chains</div>
-            </div>
-          </div>
+
+            {/* Final pool depths */}
+            {finalChainLiq && (
+              <div className={styles.poolRow}>
+                {['eth','base','sol'].map(chain => {
+                  const before = liquidity[chain]
+                  const after  = finalChainLiq[chain]
+                  const delta  = before != null && after != null ? after - before : null
+                  return (
+                    <div key={chain} className={styles.poolCard} style={{ '--chain-color': CHAIN_COLORS[chain] }}>
+                      <div className={styles.poolLabel}>{CHAIN_LABELS[chain]} Pool After</div>
+                      <div className={styles.poolVal}>{after != null ? fmtUSD(after) : '—'}</div>
+                      {delta != null && (
+                        <div className={delta >= 0 ? 'pos' : 'neg'} style={{ fontSize: 11, fontWeight: 700, marginTop: 2 }}>
+                          {delta >= 0 ? '+' : ''}{fmtUSD(delta)}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
 
         {/* Per-chain execution slippage */}
