@@ -183,18 +183,16 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
           <div className={styles.inputCol}>
             <div className="k-eyebrow">Target MC</div>
-            <div className={styles.targetRow}>
-              <div className={styles.usdWrap}>
-                <span className={styles.usdPrefix}>$</span>
-                <input
-                  className={styles.input}
-                  placeholder="100M, 1B, 5B"
-                  value={targetInput}
-                  onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
-                />
-              </div>
+            <div className={styles.usdWrap}>
+              <span className={styles.usdPrefix}>$</span>
+              <input
+                className={`${styles.input} ${mcResult ? styles.inputWithDelta : ''}`}
+                placeholder="100M, 1B, 5B"
+                value={targetInput}
+                onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
+              />
               {mcResult && (
-                <span className="pos" style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.04em' }}>
+                <span className={`${styles.deltaTag} pos`}>
                   +{fmtUSD(mcResult.newMC - currentMC)}
                 </span>
               )}
