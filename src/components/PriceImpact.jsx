@@ -13,19 +13,15 @@ async function fetchV2LiquidityUSD(poolAddress) {
   return j.liquidityUSD ?? null
 }
 
-// MC impact via constant-product AMM on combined effective liquidity
-function calcMCImpact(currentMC, effLiq, tradeUSD, isBuy) {
+function calcMCImpact(currentMC, effLiq, tradeUSD) {
   if (!isFinite(currentMC) || currentMC <= 0) return null
   if (!isFinite(effLiq)    || effLiq    <= 0) return null
   if (!isFinite(tradeUSD)  || tradeUSD  <= 0) return null
-  const q = effLiq / 2
-  const mult = isBuy
-    ? Math.pow((q + tradeUSD) / q, 2)
-    : Math.pow(q / (q + tradeUSD), 2)
+  const q    = effLiq / 2
+  const mult = Math.pow((q + tradeUSD) / q, 2)
   return { newMC: currentMC * mult, pctChange: (mult - 1) * 100 }
 }
 
-// Tokens received from a single buy/sell on a chain's pool via x·y=k
 function calcTokensReceived(chainLiq, priceUSD, tradeUSD) {
   if (!chainLiq || !priceUSD || !tradeUSD) return null
   const q  = chainLiq / 2
@@ -33,10 +29,17 @@ function calcTokensReceived(chainLiq, priceUSD, tradeUSD) {
   return x0 - (x0 * q) / (q + tradeUSD)
 }
 
-// Buy volume required to move MC from current to target
 function calcRequiredBuy(currentMC, effLiq, targetMC) {
   if (!isFinite(targetMC) || targetMC <= currentMC || !effLiq) return null
   return (effLiq / 2) * (Math.sqrt(targetMC / currentMC) - 1)
+}
+
+function fmtShort(n) {
+  if (!isFinite(n) || n <= 0) return ''
+  if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B'
+  if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'K'
+  return n.toFixed(0)
 }
 
 function fmtTokens(n) {
@@ -62,7 +65,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const [updatedTs, setUpdatedTs] = useState(null)
 
   const [tradeInput,  setTradeInput]  = useState('')
-  const [isBuy,       setIsBuy]       = useState(true)
   const [targetInput, setTargetInput] = useState('')
 
   const fetchLiquidity = useCallback(async () => {
@@ -70,9 +72,9 @@ export default function PriceImpact({ collapsed, onToggle }) {
     const [dexResults, onChainLiq] = await Promise.all([
       Promise.allSettled(
         Object.entries(LPS).map(async ([chain, lp]) => {
-          const url = API.dex(`/latest/dex/pairs/${CHAIN_NAMES[chain]}/${lp.address}`)
-          const r   = await fetch(url, { cache: 'no-store' })
-          const j   = await r.json()
+          const url  = API.dex(`/latest/dex/pairs/${CHAIN_NAMES[chain]}/${lp.address}`)
+          const r    = await fetch(url, { cache: 'no-store' })
+          const j    = await r.json()
           const pair = j?.pairs?.[0] || j?.pair
           return { chain, liq: Number(pair?.liquidity?.usd || 0), mc: Number(pair?.marketCap || 0) }
         })
@@ -97,14 +99,36 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const { spinning, trigger } = useRefresh(fetchLiquidity)
   useEffect(() => { fetchLiquidity() }, [])
 
-  // ---- Derived ----
-  const tradeUSD = parseAmount(tradeInput)
-  const targetMC = parseAmount(targetInput)
-  const effLiq   = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
-  const price    = currentMC ? currentMC / CIRC_SUPPLY : null
+  const effLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
+  const price  = currentMC ? currentMC / CIRC_SUPPLY : null
 
+  // Bidirectional: typing buy amount → derives target MC; typing target MC → derives buy amount
+  const handleTradeChange = val => {
+    setTradeInput(val)
+    const usd = parseAmount(val)
+    if (usd > 0 && currentMC && effLiq) {
+      const res = calcMCImpact(currentMC, effLiq, usd)
+      setTargetInput(res ? fmtShort(res.newMC) : '')
+    } else {
+      setTargetInput('')
+    }
+  }
+
+  const handleTargetChange = val => {
+    setTargetInput(val)
+    const mc = parseAmount(val)
+    if (mc > 0 && currentMC && effLiq) {
+      const buy = calcRequiredBuy(currentMC, effLiq, mc)
+      setTradeInput(buy ? fmtShort(buy) : '')
+    } else {
+      setTradeInput('')
+    }
+  }
+
+  // All results derive from tradeInput (always populated, either by user or derived)
+  const tradeUSD = parseAmount(tradeInput)
   const mcResult = isFinite(tradeUSD) && tradeUSD > 0 && effLiq > 0 && currentMC
-    ? calcMCImpact(currentMC, effLiq, tradeUSD, isBuy)
+    ? calcMCImpact(currentMC, effLiq, tradeUSD)
     : null
 
   const tokenResults = isFinite(tradeUSD) && tradeUSD > 0 && price
@@ -112,10 +136,6 @@ export default function PriceImpact({ collapsed, onToggle }) {
         const liq = liquidity[chain]
         return [chain, liq ? calcTokensReceived(liq, price, tradeUSD) : null]
       }))
-    : null
-
-  const requiredBuy = isFinite(targetMC) && targetMC > 0
-    ? calcRequiredBuy(currentMC, effLiq, targetMC)
     : null
 
   return (
@@ -143,20 +163,31 @@ export default function PriceImpact({ collapsed, onToggle }) {
           ))}
         </div>
 
-        {/* Trade input */}
-        <div className={styles.controlsRow}>
-          <div className={styles.usdWrap}>
-            <span className={styles.usdPrefix}>$</span>
-            <input
-              className={styles.input}
-              placeholder="1000, 50K, 1M"
-              value={tradeInput}
-              onChange={e => setTradeInput(e.target.value.replace(/^\$/, ''))}
-            />
+        {/* Bidirectional inputs */}
+        <div className={styles.inputRow}>
+          <div className={styles.inputCol}>
+            <div className="k-eyebrow">Buy Amount</div>
+            <div className={styles.usdWrap}>
+              <span className={styles.usdPrefix}>$</span>
+              <input
+                className={styles.input}
+                placeholder="1000, 50K, 1M"
+                value={tradeInput}
+                onChange={e => handleTradeChange(e.target.value.replace(/^\$/, ''))}
+              />
+            </div>
           </div>
-          <div className={styles.toggleGroup}>
-            <button className={`k-chip ${isBuy  ? 'active' : ''} ${styles.buyChip}`}  onClick={() => setIsBuy(true)}>Buy</button>
-            <button className={`k-chip ${!isBuy ? 'active' : ''} ${styles.sellChip}`} onClick={() => setIsBuy(false)}>Sell</button>
+          <div className={styles.inputCol}>
+            <div className="k-eyebrow">Target MC</div>
+            <div className={styles.usdWrap}>
+              <span className={styles.usdPrefix}>$</span>
+              <input
+                className={styles.input}
+                placeholder="100M, 1B, 5B"
+                value={targetInput}
+                onChange={e => handleTargetChange(e.target.value.replace(/^\$/, ''))}
+              />
+            </div>
           </div>
         </div>
 
@@ -175,7 +206,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
               </div>
             </div>
             <div className={styles.resultCard}>
-              <div className={styles.resultLabel}>Trade Size</div>
+              <div className={styles.resultLabel}>Buy Amount</div>
               <div className={styles.resultVal}>{fmtUSD(tradeUSD)}</div>
             </div>
           </div>
@@ -197,41 +228,13 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
         )}
 
-        {/* Inverse: buy volume to reach target MC */}
-        <div className={styles.equivSection}>
-          <div className={styles.equivHeader}>Buy volume to reach target MC</div>
-          <div className={styles.controlsRow}>
-            <div className={styles.usdWrap}>
-              <span className={styles.usdPrefix}>$</span>
-              <input
-                className={styles.input}
-                placeholder="100M, 1B, 5B"
-                value={targetInput}
-                onChange={e => setTargetInput(e.target.value.replace(/^\$/, ''))}
-              />
-            </div>
-            {requiredBuy != null && (
-              <div className={styles.resultCard} style={{ flex: 1 }}>
-                <div className={styles.resultLabel}>Required Buy</div>
-                <div className={styles.resultVal}>{fmtUSD(requiredBuy)}</div>
-                <div className={styles.resultSub}>to reach {fmtUSD(targetMC)}</div>
-              </div>
-            )}
-            {isFinite(targetMC) && targetMC > 0 && targetMC <= currentMC && (
-              <div className={styles.resultSub} style={{ alignSelf: 'center' }}>
-                Target must be above current MC
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Disclaimer */}
         <div className={styles.disclaimer}>
           <div className={styles.disclaimerTitle}>Estimates only — not financial advice</div>
           <ul className={styles.disclaimerList}>
-            <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity is fetched from the Uniswap V2 pool contract on-chain. BASE and SOL use DexScreener reported liquidity.</li>
+            <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity fetched from Uniswap V2 contract on-chain. BASE and SOL use DexScreener reported liquidity.</li>
             <li>MC impact uses combined effective liquidity: ETH at 100%, BASE and SOL at 60% — Wormhole bridging latency reduces their arb contribution.</li>
-            <li>Tokens received are calculated per chain using that chain's pool depth independently.</li>
+            <li>Tokens received calculated per chain independently using each pool's depth.</li>
           </ul>
         </div>
 
