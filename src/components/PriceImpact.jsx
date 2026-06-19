@@ -43,15 +43,25 @@ function tradeForMultiplier(liquidityUSD, multiplier, isBuy) {
   }
 }
 
-// Progressive: compound N trades in a row
-function calcProgressive(currentMC, liquidityUSD, tradeUSD, isBuy, count) {
+// Progressive: compound N trades in a row.
+// useArb=true → arb restores pool depth between each trade (each buy starts fresh against
+// full effective liquidity, just at the new higher price); pool depletion is NOT compounded.
+// useArb=false → no rebalancing between trades; pool depletes each step, so later buys hit harder.
+function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count, useArb) {
   let mc = currentMC
-  let liq = liquidityUSD
+  let liq = effLiquidityUSD
+  const baseLiq = effLiquidityUSD
   for (let i = 0; i < count; i++) {
     const res = calcImpact(mc, liq, tradeUSD, isBuy)
     if (!res) break
-    liq = liq * res.multiplier  // reserves scale with price
     mc = res.newMC
+    if (useArb) {
+      // Pool depth restores via arb, but scales with the new price level
+      liq = baseLiq * res.multiplier
+    } else {
+      // Pool depletes — each subsequent trade has more impact
+      liq = liq * res.multiplier
+    }
   }
   const totalPct = ((mc / currentMC) - 1) * 100
   return { newMC: mc, pctChange: totalPct }
@@ -114,13 +124,16 @@ export default function PriceImpact({ collapsed, onToggle }) {
   const tradeUSD  = parseAmount(tradeInput)
   const count     = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
   const srcLiq    = liquidity[sourceChain]
-  const totalLiq  = Object.values(liquidity).reduce((s, v) => s + (v || 0), 0)
-  const effLiq    = useArb ? totalLiq : srcLiq  // arb = trade spreads across all pools
+  // Arb efficiency: ETH pool is canonical and fully counts; Base + SOL provide partial
+  // resistance via cross-chain arb but bridging has latency/cost, so weight at 60%.
+  const ARB_EFFICIENCY = 0.6
+  const arbLiq = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
+  const effLiq = useArb ? arbLiq : srcLiq
 
   // Primary impact result
   const result = isFinite(tradeUSD) && tradeUSD > 0 && effLiq > 0 && currentMC
     ? progressive
-      ? calcProgressive(currentMC, effLiq, tradeUSD, isBuy, count)
+      ? calcProgressive(currentMC, effLiq, tradeUSD, isBuy, count, useArb)
       : calcImpact(currentMC, effLiq, tradeUSD, isBuy)
     : null
 
@@ -302,8 +315,8 @@ export default function PriceImpact({ collapsed, onToggle }) {
           <div className={styles.disclaimerTitle}>Estimates only — not financial advice</div>
           <ul className={styles.disclaimerList}>
             <li>Uses constant-product (x·y=k) AMM formula. ETH liquidity is fetched directly from the Uniswap V2 pool contract for accuracy. BASE (Aerodrome) and SOL (Raydium) use reported liquidity from DexScreener.</li>
-            <li>"Instant arb" assumes price equalizes across all chains immediately; real arbitrage has latency and gas cost.</li>
-            <li>Progressive mode compounds trades sequentially, approximating pool depth change between trades.</li>
+            <li>"Instant arb" weights ETH liquidity at 100% and BASE/SOL at 60% — cross-chain arb via Wormhole has bridging latency and gas cost that reduces its effectiveness.</li>
+            <li>Progressive mode: with arb on, pool depth restores between each trade (at the new price level); with arb off, pool depletes each step so later buys hit harder.</li>
             <li>Liquidity snapshots are live but can change rapidly with LP adds/removes.</li>
           </ul>
         </div>
