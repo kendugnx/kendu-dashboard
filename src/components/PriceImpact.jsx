@@ -103,7 +103,7 @@ export default function PriceImpact({ collapsed, onToggle }) {
 
   // ---- Derived ----
   const tradeUSD  = parseAmount(tradeInput)
-  const count     = Math.max(1, Math.min(100, parseInt(tradeCount) || 1))
+  const count     = Math.max(1, parseInt(tradeCount) || 1)
   const totalUSD  = progressive ? tradeUSD * count : tradeUSD
   const effLiq    = (liquidity.eth || 0) + ((liquidity.base || 0) + (liquidity.sol || 0)) * ARB_EFFICIENCY
 
