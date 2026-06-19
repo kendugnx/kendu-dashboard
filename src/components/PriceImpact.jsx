@@ -200,28 +200,22 @@ export default function PriceImpact({ collapsed, onToggle }) {
           </div>
         </div>
 
-        {/* Row 1: Current LP per chain */}
         <div className={styles.outputGrid}>
-          {CHAINS.map(chain => (
-            <Card
-              key={`liq-${chain}`}
-              label={`${CHAIN_LABEL[chain]} Liquidity`}
-              value={liquidity[chain] != null ? fmtUSD(liquidity[chain]) : null}
-            />
-          ))}
-
-          {/* Row 2: New LP per chain */}
-          {CHAINS.map(chain => (
-            <Card
-              key={`newliq-${chain}`}
-              label={`${CHAIN_LABEL[chain]} New LP`}
-              value={newLiquidity?.[chain] != null ? fmtUSD(newLiquidity[chain]) : '—'}
-              sub={newLiquidity?.[chain] && liquidity[chain]
-                ? `+${fmtUSD(newLiquidity[chain] - liquidity[chain])}`
-                : undefined}
-              subClass="pos"
-            />
-          ))}
+          {/* LP per chain — updates to new depth when trade is entered */}
+          {CHAINS.map(chain => {
+            const cur   = liquidity[chain]
+            const next  = newLiquidity?.[chain]
+            const delta = next != null && cur != null ? next - cur : null
+            return (
+              <Card
+                key={`liq-${chain}`}
+                label={`${CHAIN_LABEL[chain]} Liquidity`}
+                value={next != null ? fmtUSD(next) : cur != null ? fmtUSD(cur) : null}
+                sub={delta != null ? `+${fmtUSD(delta)}` : undefined}
+                subClass={delta != null ? 'pos' : undefined}
+              />
+            )
+          })}
 
           {/* Row 3: Tokens received per chain */}
           {CHAINS.map(chain => {
