@@ -35,6 +35,7 @@ function fmtTierRange(t) {
 export default function Calculator({ collapsed, onToggle }) {
   const [spotMC,      setSpotMC]      = useState(null)
   const [spotPrice,   setSpotPrice]   = useState(null)
+  const [poolLiq,     setPoolLiq]     = useState(null)
   const [mcChange24h, setMcChange24h] = useState(null)
   const [dexLink,     setDexLink]     = useState('https://dexscreener.com')
   const [targetInput, setTargetInput] = useState('')
@@ -59,6 +60,8 @@ export default function Calculator({ collapsed, onToggle }) {
     const link  = `https://dexscreener.com/${best.chainId || 'ethereum'}/${best.pairAddress || ''}`
     if (isFinite(mc) && mc > 0) setSpotMC(mc)
     if (isFinite(price) && price > 0) setSpotPrice(price)
+    const liq = Number(best.liquidity?.usd || 0)
+    if (isFinite(liq) && liq > 0) setPoolLiq(liq)
     const chg = Number(best.priceChange?.h24)
     if (isFinite(chg)) setMcChange24h(chg)
     setDexLink(link)
@@ -77,9 +80,17 @@ export default function Calculator({ collapsed, onToggle }) {
   const valueAtCurrent = (isFinite(currentTokens) && isFinite(spotPrice)) ? currentTokens * spotPrice : NaN
   const priceAtTarget  = (isFinite(spotPrice) && isFinite(multiplier)) ? spotPrice * multiplier : NaN
   const valueAtTarget  = (isFinite(currentTokens) && isFinite(priceAtTarget)) ? currentTokens * priceAtTarget : NaN
-  // When a tier is explicitly clicked, use the pinned exact token count to avoid float drift
-  const addTokens      = pinnedAddTokens != null ? pinnedAddTokens
-    : (isFinite(addUSD) && isFinite(spotPrice) && spotPrice > 0) ? addUSD / spotPrice : NaN
+  // Use x·y=k AMM formula so tokens received matches what you'd actually get on-chain.
+  // Tier clicks pin an exact token count (tier boundary math); manual USD input uses AMM.
+  const ammTokens = isFinite(addUSD) && addUSD > 0 && poolLiq > 0 && spotPrice > 0
+    ? (() => {
+        const q = poolLiq / 2
+        const x0 = q / spotPrice
+        return x0 - (x0 * q) / (q + addUSD)
+      })()
+    : NaN
+  const addTokens = pinnedAddTokens != null ? pinnedAddTokens
+    : isFinite(ammTokens) ? ammTokens : NaN
   const newTokenBal    = (isFinite(currentTokens) && isFinite(addTokens)) ? currentTokens + addTokens : (isFinite(currentTokens) ? currentTokens : NaN)
   const newValueTarget = (isFinite(newTokenBal) && isFinite(priceAtTarget)) ? newTokenBal * priceAtTarget : NaN
   const totalInvested  = isFinite(valueAtCurrent) ? valueAtCurrent + (isFinite(addUSD) && addUSD > 0 ? addUSD : 0) : NaN
