@@ -30,8 +30,8 @@ function calcImpact(currentMC, liquidityUSD, tradeUSD, isBuy) {
 }
 
 // Progressive: compound N trades in a row.
-// Arb restores pool depth between each trade (each buy starts fresh against full effective
-// liquidity at the new higher price) — pool depletion does not compound across trades.
+// After each trade, LP depth updates correctly: a buy adds 2×tradeUSD to pool value
+// (buyer's ETH enters the pool; both sides remain equal in USD under x·y=k).
 function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count) {
   let mc = currentMC
   let liq = effLiquidityUSD
@@ -39,7 +39,7 @@ function calcProgressive(currentMC, effLiquidityUSD, tradeUSD, isBuy, count) {
     const res = calcImpact(mc, liq, tradeUSD, isBuy)
     if (!res) break
     mc = res.newMC
-    liq = effLiquidityUSD * res.multiplier
+    liq = isBuy ? liq + 2 * tradeUSD : Math.max(0, liq - 2 * tradeUSD)
   }
   const totalPct = ((mc / currentMC) - 1) * 100
   return { newMC: mc, pctChange: totalPct }
