@@ -638,6 +638,8 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/duderino')) {
       await sendMessage(chatId, 'Please accept my apology.')
 
+    } else if (text.startsWith('/chad')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/CHAD.JPG', '')
     } else if (text.startsWith('/shakira')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/shakira.webp', '')
     } else if (text.startsWith('/lorniko')) {
