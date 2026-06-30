@@ -723,6 +723,9 @@ export default async function handler(req, res) {
       form.append('animation', new Blob([buf], { type: 'video/mp4' }), 'modern-family.mp4')
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, { method: 'POST', body: form })
 
+    } else if (text.startsWith('/nadine')) {
+      await sendMessage(chatId, 'NO MORE COMMANDS.')
+
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
         method: 'POST',
