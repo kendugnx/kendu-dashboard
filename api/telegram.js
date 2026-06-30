@@ -724,7 +724,13 @@ export default async function handler(req, res) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, { method: 'POST', body: form })
 
     } else if (text.startsWith('/nadine')) {
-      await sendMessage(chatId, 'NO MORE COMMANDS.')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/nadine.png', 'NO MORE COMMANDS.')
+
+    } else if (text.startsWith('/marketing')) {
+      await sendMessage(chatId, 'Please DM @soFinished with all marketing inquiries.')
+
+    } else if (text.startsWith('/meaningoflife')) {
+      await sendMessage(chatId, '42.')
 
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
