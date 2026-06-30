@@ -216,6 +216,13 @@ function impactRequiredBuy(currentMC, effLiq, targetMC) {
   return (effLiq / 2) * (Math.sqrt(targetMC / currentMC) - 1)
 }
 
+async function getVolume24h() {
+  const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/eth/pools/${LP_ETH}`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+  if (!r.ok) return 0
+  const j = await r.json()
+  return Number(j?.data?.attributes?.volume_usd?.h24 ?? 0)
+}
+
 async function getVolumeCandles(days) {
   const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/eth/pools/${LP_ETH}/ohlcv/day?limit=${days}&currency=usd`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
   const j = await r.json()
@@ -509,10 +516,9 @@ export default async function handler(req, res) {
       const days = Math.max(7, parsedDays ?? 180)
       const rangeLabel = parsedDays != null ? parsedLabel : '180 Days'
 
-      const candles = await getVolumeCandles(days)
+      const [candles, total24h] = await Promise.all([getVolumeCandles(days), getVolume24h()])
       if (!candles.length) { await sendMessage(chatId, 'Error loading volume data.'); return res.status(200).send('OK') }
 
-      const total24h = candles[candles.length - 1]?.vol ?? 0
       const totalRange = candles.reduce((a, c) => a + c.vol, 0)
       const caption =
         `<b>Volume (${rangeLabel})</b>\n` +
