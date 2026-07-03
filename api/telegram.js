@@ -738,6 +738,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/meaningoflife')) {
       await sendMessage(chatId, '42.')
 
+    } else if (text.startsWith('/dc_300')) {
+      await sendMessage(chatId, 'The Man. The Myth. The Legend.')
+
     } else if (text.startsWith('/dashboard')) {
       await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
         method: 'POST',
