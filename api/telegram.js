@@ -426,8 +426,12 @@ export default async function handler(req, res) {
         `/holders — Holders chart\n` +
         `/volume — Volume chart\n` +
         `/snapshot — Generate 24h snapshot\n` +
+        `/test — passed\n` +
         `/dashboard — Open the dashboard`
       )
+
+    } else if (text.startsWith('/test')) {
+      await sendMessage(chatId, 'passed')
 
     } else if (text.startsWith('/price')) {
       const { ethPrice, ethChange, kenduChange } = await getPrice()

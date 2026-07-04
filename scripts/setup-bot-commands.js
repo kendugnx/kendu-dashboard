@@ -21,6 +21,7 @@ const commands = [
   { command: 'holders',   description: 'HOLDERS CHART' },
   { command: 'volume',    description: 'VOLUME CHART' },
   { command: 'snapshot',  description: 'GENERATE 24H SNAPSHOT' },
+  { command: 'test',      description: 'TEST BOT RESPONSE' },
   { command: 'dashboard', description: 'OPEN THE DASHBOARD' },
   { command: 'help',      description: 'List all commands' },
 ]
