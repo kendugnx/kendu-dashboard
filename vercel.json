@@ -1,5 +1,5 @@
 {
-"rewrites": [{ "source": "/((?!@|src|node_modules|assets|fonts|api|public|.*\\.mp4|.*\\.jpg|.*\\.jpeg|.*\\.png|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
+"rewrites": [{ "source": "/((?!@|src|node_modules|assets|fonts|api|public|.*\\.mp4|.*\\.gif|.*\\.jpg|.*\\.jpeg|.*\\.png|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
   "functions": {
     "api/snapshot-image.js": { "memory": 1536, "maxDuration": 30 }
   },

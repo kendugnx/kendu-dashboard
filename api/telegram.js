@@ -88,6 +88,14 @@ async function sendPhoto(chatId, imageUrl, caption) {
   })
 }
 
+async function sendAnimation(chatId, animationUrl, caption = '') {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendAnimation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, animation: animationUrl, caption, parse_mode: 'HTML' }),
+  })
+}
+
 async function getPrice() {
   const [ethRes, kenduRes] = await Promise.all([
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' }),
@@ -427,11 +435,15 @@ export default async function handler(req, res) {
         `/volume — Volume chart\n` +
         `/snapshot — Generate 24h snapshot\n` +
         `/test — passed\n` +
+        `/gnx — meh\n` +
         `/dashboard — Open the dashboard`
       )
 
     } else if (text.startsWith('/test')) {
       await sendMessage(chatId, 'passed')
+
+    } else if (text.startsWith('/gnx')) {
+      await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
     } else if (text.startsWith('/price')) {
       const { ethPrice, ethChange, kenduChange } = await getPrice()
