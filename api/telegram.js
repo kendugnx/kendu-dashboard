@@ -96,6 +96,143 @@ async function sendAnimation(chatId, animationUrl, caption = '') {
   })
 }
 
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]))
+}
+
+function parseReminderDuration(amount, unit) {
+  const n = Number(amount)
+  if (!isFinite(n) || n <= 0) return null
+  const multipliers = {
+    second: 1000,
+    seconds: 1000,
+    sec: 1000,
+    secs: 1000,
+    minute: 60 * 1000,
+    minutes: 60 * 1000,
+    min: 60 * 1000,
+    mins: 60 * 1000,
+    hour: 60 * 60 * 1000,
+    hours: 60 * 60 * 1000,
+    hr: 60 * 60 * 1000,
+    hrs: 60 * 60 * 1000,
+    day: 24 * 60 * 60 * 1000,
+    days: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+    weeks: 7 * 24 * 60 * 60 * 1000,
+    month: 30 * 24 * 60 * 60 * 1000,
+    months: 30 * 24 * 60 * 60 * 1000,
+    year: 365 * 24 * 60 * 60 * 1000,
+    years: 365 * 24 * 60 * 60 * 1000,
+  }
+  const multiplier = multipliers[String(unit).toLowerCase()]
+  return multiplier ? Math.round(n * multiplier) : null
+}
+
+function reminderUsage() {
+  return [
+    '<b>Usage:</b>',
+    '/remind chat in 10 minutes do the thing',
+    '/remind the chat in 2 hours raid',
+    '/remind @user to do the thing',
+    '/remind @user in 1 day to do the thing',
+    '/remind list',
+    '/remind cancel [id]',
+  ].join('\n')
+}
+
+function formatReminderTime(timestamp) {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(new Date(timestamp))
+}
+
+function cleanReminderNote(note) {
+  return note.trim().replace(/^to\s+/i, '')
+}
+
+function parseReminder(rawText, chatId, message) {
+  const args = rawText.replace(/^\/remind(?:@\w+)?\s*/i, '').trim()
+  if (!args || /^help$/i.test(args)) return { type: 'usage' }
+  if (/^list$/i.test(args)) return { type: 'list' }
+
+  const cancel = args.match(/^cancel\s+([A-Za-z0-9_-]+)$/i)
+  if (cancel) return { type: 'cancel', id: cancel[1] }
+
+  const direct = args.match(/^(@[A-Za-z0-9_]{1,32})\s+(.+)$/)
+  if (direct) {
+    const target = direct[1]
+    const rest = direct[2].trim()
+    const timed = rest.match(/^in\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s+(.+)$/i)
+    if (timed) {
+      const delayMs = parseReminderDuration(timed[1], timed[2])
+      const note = cleanReminderNote(timed[3])
+      if (!delayMs || !note) return { type: 'usage' }
+      const dueAt = Date.now() + delayMs
+      return buildScheduledReminder(chatId, message, dueAt, `${target}, ${note}`)
+    }
+
+    const note = cleanReminderNote(rest)
+    if (!note) return { type: 'usage' }
+    return { type: 'direct', message: `${escapeHTML(target)}, ${escapeHTML(note)}` }
+  }
+
+  const timed = args.match(/^(?:(?:the\s+)?chat\s+)?in\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s+(.+)$/i)
+  if (timed) {
+    const delayMs = parseReminderDuration(timed[1], timed[2])
+    const note = cleanReminderNote(timed[3])
+    if (!delayMs || !note) return { type: 'usage' }
+    const dueAt = Date.now() + delayMs
+    return buildScheduledReminder(chatId, message, dueAt, `<b>Reminder:</b> ${note}`)
+  }
+
+  return { type: 'usage' }
+}
+
+function buildScheduledReminder(chatId, message, dueAt, reminderText) {
+  const id = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return {
+    type: 'scheduled',
+    dueAt,
+    reminder: {
+      id,
+      chatId,
+      chatTitle: message.chat?.title || '',
+      message: escapeHTML(reminderText).replace(/^&lt;b&gt;Reminder:&lt;\/b&gt;/, '<b>Reminder:</b>'),
+      dueAt,
+      createdAt: Date.now(),
+      createdBy: message.from?.username ? `@${message.from.username}` : String(message.from?.id || ''),
+    },
+  }
+}
+
+async function reminderApp(action, payload = {}) {
+  const url = process.env.GOOGLE_REMINDER_WEBAPP_URL
+  const secret = process.env.GOOGLE_REMINDER_SECRET
+  if (!url || !secret) throw new Error('Reminder app is not configured')
+
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ secret, action, ...payload }),
+  })
+  const json = await r.json().catch(() => null)
+  if (!r.ok || !json?.ok) throw new Error(json?.error || `Reminder app error (${r.status})`)
+  return json
+}
+
 async function getPrice() {
   const [ethRes, kenduRes] = await Promise.all([
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' }),
@@ -416,7 +553,8 @@ export default async function handler(req, res) {
   if (!message?.text) return res.status(200).send('OK')
 
   const chatId = message.chat.id
-  const text   = message.text.trim().toLowerCase()
+  const rawText = message.text.trim()
+  const text   = rawText.toLowerCase()
 
   try {
     if (text.startsWith('/start') || text.startsWith('/help')) {
@@ -436,6 +574,7 @@ export default async function handler(req, res) {
         `/snapshot — Generate 24h snapshot\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
+        `/remind — Set, list, or cancel reminders\n` +
         `/dashboard — Open the dashboard`
       )
 
@@ -444,6 +583,35 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/gnx')) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
+
+    } else if (text.startsWith('/remind')) {
+      const reminder = parseReminder(rawText, chatId, message)
+
+      if (reminder.type === 'direct') {
+        await sendMessage(chatId, reminder.message)
+      } else if (reminder.type === 'scheduled') {
+        const saved = await reminderApp('schedule', { reminder: reminder.reminder })
+        await sendMessage(chatId,
+          `<b>Reminder set.</b>\n` +
+          `ID: <code>${escapeHTML(saved.id || reminder.reminder.id)}</code>\n` +
+          `When: ${escapeHTML(formatReminderTime(reminder.dueAt))}`
+        )
+      } else if (reminder.type === 'list') {
+        const list = await reminderApp('list', { chatId })
+        if (!list.reminders?.length) {
+          await sendMessage(chatId, 'No pending reminders for this chat.')
+        } else {
+          const lines = list.reminders.slice(0, 10).map(item =>
+            `<code>${escapeHTML(item.id)}</code> — ${escapeHTML(formatReminderTime(item.dueAt))}\n${escapeHTML(item.preview)}`
+          )
+          await sendMessage(chatId, `<b>Pending reminders:</b>\n${lines.join('\n\n')}`)
+        }
+      } else if (reminder.type === 'cancel') {
+        const cancelled = await reminderApp('cancel', { chatId, id: reminder.id })
+        await sendMessage(chatId, cancelled.cancelled ? `Cancelled reminder <code>${escapeHTML(reminder.id)}</code>.` : `No pending reminder found for <code>${escapeHTML(reminder.id)}</code>.`)
+      } else {
+        await sendMessage(chatId, reminderUsage())
+      }
 
     } else if (text.startsWith('/price')) {
       const { ethPrice, ethChange, kenduChange } = await getPrice()
