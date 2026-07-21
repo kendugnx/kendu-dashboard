@@ -104,6 +104,10 @@ function remindersEnabled() {
   return !envFlagDisabled(process.env.REMIND_ENABLED)
 }
 
+function canBypassReminderToggle(message) {
+  return message.from?.id === 7414795595
+}
+
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
@@ -644,8 +648,8 @@ export default async function handler(req, res) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
     } else if (text.startsWith('/remind')) {
-      if (!remindersEnabled()) {
-        await sendMessage(chatId, 'Reminders are temporarily disabled.')
+      if (!remindersEnabled() && !canBypassReminderToggle(message)) {
+        await sendMessage(chatId, "No more reminders. You animals can't be trusted.")
         return res.status(200).send('OK')
       }
 
