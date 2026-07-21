@@ -163,6 +163,53 @@ function cleanReminderNote(note) {
   return note.trim().replace(/^to\s+/i, '')
 }
 
+function formatAddressedReminder(target, note) {
+  return `${target}, ${toSecondPerson(cleanReminderNote(note))}`
+}
+
+function toSecondPerson(note) {
+  const text = note.trim()
+  const match = text.match(/^(?:that\s+)?(?:he|she|they)\s+(.+)$/i)
+  if (!match) return text
+
+  let rest = match[1].trim()
+  const directReplacements = [
+    [/^isn't\b/i, "aren't"],
+    [/^aren't\b/i, "aren't"],
+    [/^is\b/i, 'are'],
+    [/^are\b/i, 'are'],
+    [/^wasn't\b/i, "weren't"],
+    [/^weren't\b/i, "weren't"],
+    [/^was\b/i, 'were'],
+    [/^were\b/i, 'were'],
+    [/^hasn't\b/i, "haven't"],
+    [/^haven't\b/i, "haven't"],
+    [/^has\b/i, 'have'],
+    [/^have\b/i, 'have'],
+    [/^doesn't\b/i, "don't"],
+    [/^don't\b/i, "don't"],
+    [/^does\b/i, 'do'],
+    [/^do\b/i, 'do'],
+  ]
+
+  for (const [pattern, replacement] of directReplacements) {
+    if (pattern.test(rest)) return `you ${rest.replace(pattern, replacement)}`
+  }
+
+  rest = rest.replace(/^([A-Za-z]+)\b/, verb => singularVerbToBase(verb))
+  return `you ${rest}`
+}
+
+function singularVerbToBase(verb) {
+  const lower = verb.toLowerCase()
+  const unchanged = new Set(['can', 'could', 'may', 'might', 'must', 'should', 'will', 'would'])
+  if (unchanged.has(lower)) return verb
+  if (lower.endsWith('ies')) return verb.slice(0, -3) + 'y'
+  if (/(ches|shes|sses|xes|zes|oes)$/i.test(verb)) return verb.slice(0, -2)
+  if (lower.endsWith('s') && !lower.endsWith('ss')) return verb.slice(0, -1)
+  return verb
+}
+
 function parseReminder(rawText, chatId, message) {
   const args = rawText.replace(/^\/remind(?:@\w+)?\s*/i, '').trim()
   if (!args || /^help$/i.test(args)) return { type: 'usage' }
@@ -178,15 +225,15 @@ function parseReminder(rawText, chatId, message) {
     const timed = rest.match(/^in\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s+(.+)$/i)
     if (timed) {
       const delayMs = parseReminderDuration(timed[1], timed[2])
-      const note = cleanReminderNote(timed[3])
+      const note = timed[3].trim()
       if (!delayMs || !note) return { type: 'usage' }
       const dueAt = Date.now() + delayMs
-      return buildScheduledReminder(chatId, message, dueAt, `${target}, ${note}`)
+      return buildScheduledReminder(chatId, message, dueAt, formatAddressedReminder(target, note))
     }
 
-    const note = cleanReminderNote(rest)
+    const note = rest.trim()
     if (!note) return { type: 'usage' }
-    return { type: 'direct', message: `${escapeHTML(target)}, ${escapeHTML(note)}` }
+    return { type: 'direct', message: escapeHTML(formatAddressedReminder(target, note)) }
   }
 
   const timed = args.match(/^(?:(?:the\s+)?chat\s+)?in\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s+(.+)$/i)
