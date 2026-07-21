@@ -108,6 +108,14 @@ function canBypassReminderToggle(message) {
   return message.from?.id === 7414795595
 }
 
+function parseReminderToggle(rawText) {
+  const args = rawText.replace(/^\/remind(?:@\w+)?\s*/i, '').trim().toLowerCase()
+  if (args === 'on' || args === 'enable' || args === 'enabled') return { type: 'toggle', enabled: true }
+  if (args === 'off' || args === 'disable' || args === 'disabled') return { type: 'toggle', enabled: false }
+  if (args === 'status') return { type: 'status' }
+  return null
+}
+
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
@@ -156,6 +164,9 @@ function reminderUsage() {
     '/remind @user in 1 day to do the thing',
     '/remind list',
     '/remind cancel [id]',
+    '/remind status',
+    '/remind on',
+    '/remind off',
   ].join('\n')
 }
 
@@ -648,7 +659,31 @@ export default async function handler(req, res) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
     } else if (text.startsWith('/remind')) {
+      const toggle = parseReminderToggle(rawText)
+      if (toggle?.type === 'toggle') {
+        if (!canBypassReminderToggle(message)) {
+          await sendMessage(chatId, "No more reminders. You animals can't be trusted.")
+          return res.status(200).send('OK')
+        }
+
+        const state = await reminderApp('setEnabled', { enabled: toggle.enabled })
+        await sendMessage(chatId, `Reminders are now ${state.enabled ? 'enabled' : 'disabled'}.`)
+        return res.status(200).send('OK')
+      }
+
+      if (toggle?.type === 'status') {
+        const state = await reminderApp('getEnabled')
+        await sendMessage(chatId, `Reminders are currently ${state.enabled ? 'enabled' : 'disabled'}.`)
+        return res.status(200).send('OK')
+      }
+
       if (!remindersEnabled() && !canBypassReminderToggle(message)) {
+        await sendMessage(chatId, "No more reminders. You animals can't be trusted.")
+        return res.status(200).send('OK')
+      }
+
+      const state = await reminderApp('getEnabled')
+      if (!state.enabled && !canBypassReminderToggle(message)) {
         await sendMessage(chatId, "No more reminders. You animals can't be trusted.")
         return res.status(200).send('OK')
       }

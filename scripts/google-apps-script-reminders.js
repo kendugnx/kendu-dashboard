@@ -17,6 +17,8 @@
  */
 
 const SHEET_NAME = 'Reminders'
+const SETTINGS_SHEET_NAME = 'Settings'
+const REMINDERS_ENABLED_KEY = 'remindersEnabled'
 const HEADERS = [
   'id',
   'chatId',
@@ -34,6 +36,8 @@ const HEADERS = [
 
 function setupReminders() {
   getReminderSheet()
+  getSettingsSheet()
+  if (getSetting(REMINDERS_ENABLED_KEY) === '') setSetting(REMINDERS_ENABLED_KEY, 'true')
 
   ScriptApp.getProjectTriggers()
     .filter(trigger => trigger.getHandlerFunction() === 'sendDueReminders')
@@ -53,6 +57,8 @@ function doPost(e) {
     if (data.action === 'schedule') return json(scheduleReminder(data.reminder))
     if (data.action === 'list') return json(listReminders(data.chatId))
     if (data.action === 'cancel') return json(cancelReminder(data.chatId, data.id))
+    if (data.action === 'getEnabled') return json({ ok: true, enabled: remindersEnabled() })
+    if (data.action === 'setEnabled') return json(setRemindersEnabled(data.enabled))
 
     return json({ ok: false, error: 'Unknown action' })
   } catch (err) {
@@ -195,6 +201,52 @@ function getReminderSheet() {
   }
 
   return sheet
+}
+
+function getSettingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet()
+  let sheet = ss.getSheetByName(SETTINGS_SHEET_NAME)
+  if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET_NAME)
+
+  const headers = sheet.getRange(1, 1, 1, 2).getValues()[0]
+  if (headers[0] !== 'key' || headers[1] !== 'value') {
+    sheet.getRange(1, 1, 1, 2).setValues([['key', 'value']])
+    sheet.setFrozenRows(1)
+  }
+
+  return sheet
+}
+
+function remindersEnabled() {
+  const value = getSetting(REMINDERS_ENABLED_KEY)
+  return !/^(false|0|off|disabled)$/i.test(String(value || 'true').trim())
+}
+
+function setRemindersEnabled(enabled) {
+  const normalized = Boolean(enabled)
+  setSetting(REMINDERS_ENABLED_KEY, normalized ? 'true' : 'false')
+  return { ok: true, enabled: normalized }
+}
+
+function getSetting(key) {
+  const sheet = getSettingsSheet()
+  const values = sheet.getDataRange().getValues()
+  for (let r = 1; r < values.length; r++) {
+    if (String(values[r][0]) === key) return String(values[r][1] ?? '')
+  }
+  return ''
+}
+
+function setSetting(key, value) {
+  const sheet = getSettingsSheet()
+  const values = sheet.getDataRange().getValues()
+  for (let r = 1; r < values.length; r++) {
+    if (String(values[r][0]) === key) {
+      sheet.getRange(r + 1, 2).setValue(value)
+      return
+    }
+  }
+  sheet.appendRow([key, value])
 }
 
 function getRows(sheet) {
