@@ -96,6 +96,14 @@ async function sendAnimation(chatId, animationUrl, caption = '') {
   })
 }
 
+function envFlagDisabled(value) {
+  return /^(false|0|off|disabled)$/i.test(String(value || '').trim())
+}
+
+function remindersEnabled() {
+  return !envFlagDisabled(process.env.REMIND_ENABLED)
+}
+
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
@@ -636,6 +644,11 @@ export default async function handler(req, res) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
     } else if (text.startsWith('/remind')) {
+      if (!remindersEnabled()) {
+        await sendMessage(chatId, 'Reminders are temporarily disabled.')
+        return res.status(200).send('OK')
+      }
+
       const reminder = parseReminder(rawText, chatId, message)
 
       if (reminder.type === 'direct') {
