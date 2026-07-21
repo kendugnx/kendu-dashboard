@@ -163,6 +163,10 @@ function cleanReminderNote(note) {
   return note.trim().replace(/^to\s+/i, '')
 }
 
+function cleanChatReminderNote(note) {
+  return cleanReminderNote(note).replace(/^that\s+/i, '')
+}
+
 function formatAddressedReminder(target, note) {
   return `${target}, ${toSecondPerson(cleanReminderNote(note))}`
 }
@@ -239,7 +243,7 @@ function parseReminder(rawText, chatId, message) {
   const timed = args.match(/^(?:(?:the\s+)?chat\s+)?in\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s+(.+)$/i)
   if (timed) {
     const delayMs = parseReminderDuration(timed[1], timed[2])
-    const note = cleanReminderNote(timed[3])
+    const note = cleanChatReminderNote(timed[3])
     if (!delayMs || !note) return { type: 'usage' }
     const dueAt = Date.now() + delayMs
     return buildScheduledReminder(chatId, message, dueAt, `<b>Reminder:</b> ${note}`)
