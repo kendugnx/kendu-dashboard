@@ -18,6 +18,27 @@ const HHI_EXCLUDED = [
 
 const HOLDERS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTD6EM3vr9AZzq8WDqFpxLEQOxqEBc-w89053lNBDed4AUcxKfeVl1lSPiK9bUJFkPN1Y3X-tVXrGnG/pub?gid=584295169&single=true&output=csv'
 
+const REMINDER_MOD_USER_IDS = new Set([
+  7414795595,
+  2057329092,
+  997118946,
+  5551033095,
+  6004758467,
+  2138521307,
+  1060998761,
+  5763971394,
+  1522166588,
+  7201780390,
+  7121153662,
+  7160130339,
+  6812909462,
+  6655137709,
+  1185649502,
+  7207670161,
+  7025569841,
+  1610630446,
+])
+
 const TIERS = [
   { name: 'Seaweed',     min: 0,      max: 1e6   },
   { name: 'Plankton',    min: 1e6,    max: 5e6   },
@@ -105,7 +126,7 @@ function remindersEnabled() {
 }
 
 function canBypassReminderToggle(message) {
-  return message.from?.id === 7414795595
+  return REMINDER_MOD_USER_IDS.has(message.from?.id)
 }
 
 function parseReminderToggle(rawText) {
