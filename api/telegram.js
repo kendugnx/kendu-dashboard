@@ -160,13 +160,8 @@ function reminderUsage() {
     '<b>Usage:</b>',
     '/remind chat in 10 minutes do the thing',
     '/remind the chat in 2 hours raid',
-    '/remind @user to do the thing',
     '/remind @user in 1 day to do the thing',
     '/remind list',
-    '/remind cancel [id]',
-    '/remind status',
-    '/remind on',
-    '/remind off',
   ].join('\n')
 }
 
@@ -710,6 +705,11 @@ export default async function handler(req, res) {
           await sendMessage(chatId, `<b>Pending reminders:</b>\n${lines.join('\n\n')}`)
         }
       } else if (reminder.type === 'cancel') {
+        if (!canBypassReminderToggle(message)) {
+          await sendMessage(chatId, "No more reminders. You animals can't be trusted.")
+          return res.status(200).send('OK')
+        }
+
         const cancelled = await reminderApp('cancel', { chatId, id: reminder.id })
         await sendMessage(chatId, cancelled.cancelled ? `Cancelled reminder <code>${escapeHTML(reminder.id)}</code>.` : `No pending reminder found for <code>${escapeHTML(reminder.id)}</code>.`)
       } else {
