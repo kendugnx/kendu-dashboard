@@ -58,7 +58,7 @@ const TIERS = [
   { name: 'Kraken',      min: 900e6,  max: 1.2e9 },
   { name: 'Chadasaurus', min: 1.2e9,  max: 1.6e9 },
   { name: 'Megalodon',   min: 1.6e9,  max: 2.3e9 },
-  { name: 'Gyrados',     min: 2.3e9,  max: 3.5e9 },
+  { name: 'Gyarados',    min: 2.3e9,  max: 3.5e9 },
   { name: 'Godwhale',    min: 3.5e9,  max: 4.5e9 },
   { name: 'Eternal',     min: 4.5e9,  max: Infinity },
 ]
