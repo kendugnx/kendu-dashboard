@@ -676,7 +676,7 @@ export default async function handler(req, res) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
     } else if (text.startsWith('/gmx')) {
-      await sendMessage(chatId, '/lorniko')
+      await sendMessage(chatId, 'Good Morniko 😍')
 
     } else if (text.startsWith('/remind')) {
       const toggle = parseReminderToggle(rawText)
