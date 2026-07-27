@@ -664,6 +664,7 @@ export default async function handler(req, res) {
         `/snapshot — Generate 24h snapshot\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
+        `/gmx — /lorniko\n` +
         `/remind — Set, list, or cancel reminders\n` +
         `/dashboard — Open the dashboard`
       )
@@ -673,6 +674,9 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/gnx')) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
+
+    } else if (text.startsWith('/gmx')) {
+      await sendMessage(chatId, '/lorniko')
 
     } else if (text.startsWith('/remind')) {
       const toggle = parseReminderToggle(rawText)

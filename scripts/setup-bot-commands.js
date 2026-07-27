@@ -23,6 +23,7 @@ const commands = [
   { command: 'snapshot',  description: 'GENERATE 24H SNAPSHOT' },
   { command: 'test',      description: 'TEST BOT RESPONSE' },
   { command: 'gnx',       description: 'MEH' },
+  { command: 'gmx',       description: 'LORNIKO' },
   { command: 'remind',    description: 'SET, LIST, OR CANCEL REMINDERS' },
   { command: 'dashboard', description: 'OPEN THE DASHBOARD' },
   { command: 'help',      description: 'List all commands' },
