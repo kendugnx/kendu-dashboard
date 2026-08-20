@@ -94,10 +94,8 @@ export default function App() {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.headerText}>
-            <span className={styles.headerPrompt}>INPUT:</span>
-            <span className={styles.headerPrompt}>ATTENTION</span>
-            <span className={styles.headerPrompt}>BURN:</span>
-            <span className={`${styles.headerPrompt} ${styles.headerKendu}`}>KENDU</span>
+            <span className={styles.headerKendu}>KENDU</span>
+            <span className={styles.headerDash}>DASHBOARD</span>
           </div>
           <div className={styles.headerLeft}>
             <button className={styles.headerBtn} onClick={toggleAll} title={allCollapsed ? 'Expand all' : 'Collapse all'}>

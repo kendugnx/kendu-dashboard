@@ -54,14 +54,6 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Asap Black';
-  src: url('/fonts/AsapCondensed-Black.ttf') format('truetype');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   /* ---- Kendu official palette ---- */
   --kendu-coral:      #F05C4E;  /* primary brand coral */
@@ -108,7 +100,7 @@
 
   /* Typography */
   --font: 'Asap Condensed', system-ui, -apple-system, sans-serif;
-  --font-title: 'Asap Black', 'Asap Condensed', system-ui, -apple-system, sans-serif;
+  --font-title: 'Moki', monospace;
 }
 
 /* ---- Light theme ---- */
@@ -141,7 +133,6 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
-  font-variant-numeric: tabular-nums lining-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
