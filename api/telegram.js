@@ -6,6 +6,11 @@ const KENDU_ETH_CA  = '0xaa95f26e30001251fb905d264Aa7b00eE9dF6C18'
 const LP_ETH        = '0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
 const LP_BASE       = '0xFBFD0e1838A101a26FDB5D4ae0B4D17153eCA66B'
 const LP_SOL        = 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK'
+const BUY_CHAINS    = [
+  { label: 'ETH', network: 'eth', pool: LP_ETH, spentSymbol: 'ETH' },
+  { label: 'BASE', network: 'base', pool: LP_BASE.toLowerCase(), spentSymbol: 'ETH' },
+  { label: 'SOL', network: 'solana', pool: LP_SOL, spentSymbol: 'SOL' },
+]
 const ARB_EFF       = 0.6
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
 
@@ -115,6 +120,76 @@ async function sendAnimation(chatId, animationUrl, caption = '') {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, animation: animationUrl, caption, parse_mode: 'HTML' }),
   })
+}
+
+async function latestBuysText() {
+  const sections = await Promise.all(BUY_CHAINS.map(async chain => {
+    try {
+      const buys = await fetchLatestChainBuys(chain)
+      if (!buys.length) return `<b>${chain.label}</b>\nNo recent buys found.`
+      return [`<b>${chain.label}</b>`, ...buys.map(formatBuyListItem)].join('\n\n')
+    } catch (err) {
+      console.error(`[buys:${chain.label}] ${err.message}`)
+      return `<b>${chain.label}</b>\nUnable to load recent buys.`
+    }
+  }))
+
+  return `<b>Latest Kendu Buys</b>\n\n${sections.join('\n\n')}`
+}
+
+async function fetchLatestChainBuys(chain) {
+  const url = `https://api.geckoterminal.com/api/v2/networks/${chain.network}/pools/${chain.pool}/trades?limit=100`
+  const r = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+  const json = await r.json().catch(() => null)
+  if (!r.ok) throw new Error(json?.errors?.[0]?.title || `GeckoTerminal returned ${r.status}`)
+
+  return (json?.data || [])
+    .map(trade => normalizeBuyListTrade(chain, trade))
+    .filter(Boolean)
+    .slice(0, 3)
+}
+
+function normalizeBuyListTrade(chain, trade) {
+  const attr = trade.attributes || {}
+  if (attr.kind !== 'buy') return null
+  const timestamp = Date.parse(attr.block_timestamp)
+  const usd = Number(attr.volume_in_usd)
+  const spentNative = Number(attr.from_token_amount)
+  const tokens = Number(attr.to_token_amount)
+  if (!isFinite(timestamp) || !isFinite(usd) || !isFinite(tokens)) return null
+  return { chain, timestamp, usd, spentNative, tokens }
+}
+
+function formatBuyListItem(buy) {
+  const native = isFinite(buy.spentNative) ? ` (${formatNative(buy.spentNative)} ${buy.chain.spentSymbol})` : ''
+  return [
+    `-${formatBuyTimestamp(buy.timestamp)}-`,
+    `Spent: <b>${formatExactUSD(buy.usd)}</b>${native}`,
+    `Got: <b>${formatTokenAmount(buy.tokens)} Kendu</b>`,
+  ].join('\n')
+}
+
+function formatBuyTimestamp(timestamp) {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(new Date(timestamp))
+}
+
+function formatExactUSD(n) {
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatTokenAmount(n) {
+  return Math.round(Number(n)).toLocaleString('en-US')
+}
+
+function formatNative(n) {
+  return Number(n).toLocaleString('en-US', { maximumFractionDigits: 6 })
 }
 
 function envFlagDisabled(value) {
@@ -662,6 +737,7 @@ export default async function handler(req, res) {
         `/holders — Holders chart\n` +
         `/volume — Volume chart\n` +
         `/snapshot — Generate 24h snapshot\n` +
+        `/buys — Latest buys by chain\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
         `/gmx — /lorniko\n` +
@@ -680,6 +756,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/gmx')) {
       await sendMessage(chatId, '/lorniko')
       await sendMessage(chatId, 'Good Morniko 😍')
+
+    } else if (text.startsWith('/buys')) {
+      await sendMessage(chatId, await latestBuysText())
 
     } else if (text.startsWith('/chatid')) {
       const chat = message.chat || {}

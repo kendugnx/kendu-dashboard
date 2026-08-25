@@ -21,6 +21,7 @@ const commands = [
   { command: 'holders',   description: 'HOLDERS CHART' },
   { command: 'volume',    description: 'VOLUME CHART' },
   { command: 'snapshot',  description: 'GENERATE 24H SNAPSHOT' },
+  { command: 'buys',      description: 'LATEST BUYS BY CHAIN' },
   { command: 'test',      description: 'TEST BOT RESPONSE' },
   { command: 'gnx',       description: 'MEH' },
   { command: 'gmx',       description: 'LORNIKO' },
