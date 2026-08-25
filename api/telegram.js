@@ -787,7 +787,6 @@ export default async function handler(req, res) {
         `/test — passed\n` +
         `/gnx — meh\n` +
         `/gmx — /lorniko\n` +
-        `/chatid — Show this chat ID\n` +
         `/emojiid — Show custom emoji IDs\n` +
         `/remind — Set, list, or cancel reminders\n` +
         `/dashboard — Open the dashboard`
@@ -805,16 +804,6 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
-
-    } else if (text.startsWith('/chatid')) {
-      const chat = message.chat || {}
-      const title = chat.title || chat.username || [chat.first_name, chat.last_name].filter(Boolean).join(' ') || 'this chat'
-      await sendMessage(chatId,
-        `<b>Chat ID</b>\n` +
-        `Name: ${escapeHTML(title)}\n` +
-        `Type: ${escapeHTML(chat.type || 'unknown')}\n` +
-        `ID: <code>${chatId}</code>`
-      )
 
     } else if (text.startsWith('/emojiid')) {
       const entities = [...(message.entities || []), ...(message.caption_entities || [])]

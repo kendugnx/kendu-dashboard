@@ -25,7 +25,6 @@ const commands = [
   { command: 'test',      description: 'TEST BOT RESPONSE' },
   { command: 'gnx',       description: 'MEH' },
   { command: 'gmx',       description: 'LORNIKO' },
-  { command: 'chatid',    description: 'SHOW THIS CHAT ID' },
   { command: 'emojiid',   description: 'SHOW CUSTOM EMOJI IDS' },
   { command: 'remind',    description: 'SET, LIST, OR CANCEL REMINDERS' },
   { command: 'dashboard', description: 'OPEN THE DASHBOARD' },
