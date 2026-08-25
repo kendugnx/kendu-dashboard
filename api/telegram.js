@@ -148,8 +148,7 @@ async function latestBuysText() {
     try {
       const buys = await fetchLatestChainBuys(chain)
       if (!buys.length) return `<b>${chain.label}</b>\nNo recent buys found.`
-      const note = buys.length < 3 ? [`Only ${buys.length} recent ${buys.length === 1 ? 'buy' : 'buys'} available.`] : []
-      return [`<b>${chain.label}</b>`, ...buys.map(formatBuyListItem), ...note].join('\n\n')
+      return [`<b>${chain.label}</b>`, ...buys.map(formatBuyListItem)].join('\n\n')
     } catch (err) {
       console.error(`[buys:${chain.label}] ${err.message}`)
       return `<b>${chain.label}</b>\nUnable to load recent buys.`
@@ -168,7 +167,7 @@ async function fetchLatestChainBuys(chain) {
   return (json?.data || [])
     .map(trade => normalizeBuyListTrade(chain, trade))
     .filter(Boolean)
-    .slice(0, 3)
+    .slice(0, 1)
 }
 
 function normalizeBuyListTrade(chain, trade) {
@@ -219,6 +218,7 @@ function formatBuyTimestamp(timestamp) {
 }
 
 function formatExactUSD(n) {
+  if (!isFinite(Number(n))) return '—'
   return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
