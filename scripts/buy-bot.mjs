@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { basename } from 'node:path'
+import { basename, dirname } from 'node:path'
 
 await loadDotenv()
 
@@ -607,7 +607,9 @@ async function readState() {
 }
 
 async function writeState(state) {
-  await import('node:fs/promises').then(fs => fs.writeFile(stateFile, JSON.stringify(state, null, 2)))
+  const fs = await import('node:fs/promises')
+  await fs.mkdir(dirname(stateFile), { recursive: true })
+  await fs.writeFile(stateFile, JSON.stringify(state, null, 2))
 }
 
 async function loadDotenv() {
