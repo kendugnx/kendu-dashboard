@@ -155,7 +155,15 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
   }
 
   const lastSeen = state.seen[chainKey]
-  const newBuys = buys.filter(event => event.id !== lastSeen && !state.recent.some(prev => prev.id === event.id))
+  const lastSeenIndex = buys.findIndex(event => event.id === lastSeen)
+  if (lastSeenIndex === -1) {
+    if (latestId) state.seen[chainKey] = latestId
+    console.log(`[${chain.label}] resynced ${buys.length} buys; latest=${latestId || 'none'}`)
+    return
+  }
+
+  const recentIds = new Set(state.recent.map(event => event.id))
+  const newBuys = buys.slice(lastSeenIndex + 1).filter(event => !recentIds.has(event.id))
 
   if (!newBuys.length) {
     console.log(`[${chain.label}] no new buys`)
