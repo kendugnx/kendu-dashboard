@@ -24,6 +24,12 @@ npm run buybot:watch
 
 Watch mode primes silently when no state file exists. It does not post historical sample buys on startup, after a missing state file, or when its last saved marker falls out of the recent-trades window. It still posts live buys after each chain has a saved marker.
 
+For Railway, set the start command to:
+
+```bash
+node scripts/buy-bot.mjs --watch
+```
+
 ## Environment Variables
 
 Required to post alerts:
@@ -70,6 +76,8 @@ https://kendu-dashboard.com/BUY_SOL.mp4
 ## Hosting Notes
 
 Do not run this inside Vercel serverless functions. It should run as an always-on worker on a host such as Railway, Render, Fly.io, or a small VPS.
+
+If Railway provides a `PORT`, the worker starts a small health endpoint on that port so web-service health checks pass while the buy watcher keeps running.
 
 The worker stores its last-seen trade IDs in `BUY_BOT_STATE_FILE`. On Railway, attach a persistent volume mounted at `/data` and keep `BUY_BOT_STATE_FILE=/data/.buy-bot-state.json` so restarts do not repost recent buys. The worker creates the folder automatically if it does not exist, but without a volume the file may be lost on redeploys.
 

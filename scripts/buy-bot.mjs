@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createServer } from 'node:http'
 import { basename, dirname } from 'node:path'
 
 await loadDotenv()
@@ -89,6 +90,7 @@ const watchMode = args.has('--watch')
 const dryRun = args.has('--dry-run') || process.env.BUY_BOT_DRY_RUN === '1'
 const pollMs = Number(process.env.BUY_BOT_POLL_MS || 15000)
 const stateFile = process.env.BUY_BOT_STATE_FILE || '.buy-bot-state.json'
+let healthServer
 const chains = (process.env.BUY_BOT_CHAINS || 'eth,base,sol')
   .split(',')
   .map(chain => chain.trim().toLowerCase())
@@ -97,6 +99,8 @@ const chains = (process.env.BUY_BOT_CHAINS || 'eth,base,sol')
 if (!chains.length) throw new Error('No valid chains configured')
 
 async function main() {
+  if (watchMode) startHealthServer()
+
   const state = await readState()
   await pollAllChains(state, { announceHistorical: args.has('--announce-existing') })
   await writeState(state)
@@ -112,6 +116,26 @@ async function main() {
       console.error(`[buy-bot] ${err.stack || err.message}`)
     }
   }, pollMs)
+}
+
+function startHealthServer() {
+  const port = Number(process.env.PORT || 0)
+  if (!port) return
+
+  healthServer = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, service: 'kendu-buy-bot' }))
+  })
+  healthServer.listen(port, '0.0.0.0', () => {
+    console.log(`[buy-bot] health server listening on ${port}`)
+  })
+}
+
+function shutdown(signal) {
+  console.log(`[buy-bot] received ${signal}, shutting down`)
+  if (!healthServer) process.exit(0)
+  healthServer.close(() => process.exit(0))
+  setTimeout(() => process.exit(0), 5000)
 }
 
 async function pollAllChains(state, options) {
@@ -638,3 +662,6 @@ main().catch(err => {
   console.error(err.stack || err.message)
   process.exit(1)
 })
+
+process.once('SIGTERM', () => shutdown('SIGTERM'))
+process.once('SIGINT', () => shutdown('SIGINT'))
