@@ -98,7 +98,7 @@ if (!chains.length) throw new Error('No valid chains configured')
 
 async function main() {
   const state = await readState()
-  await pollAllChains(state, { announceExisting: args.has('--announce-existing') })
+  await pollAllChains(state, { announceHistorical: args.has('--announce-existing') })
   await writeState(state)
 
   if (!watchMode) return
@@ -106,7 +106,7 @@ async function main() {
   setInterval(async () => {
     try {
       const nextState = await readState()
-      await pollAllChains(nextState, { announceExisting: false })
+      await pollAllChains(nextState, { announceHistorical: false })
       await writeState(nextState)
     } catch (err) {
       console.error(`[buy-bot] ${err.stack || err.message}`)
@@ -126,7 +126,7 @@ async function pollAllChains(state, options) {
   }
 }
 
-async function pollChain(chainKey, state, { announceExisting }, marketCap) {
+async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
   const chain = CHAINS[chainKey]
   const trades = await fetchTrades(chain)
 
@@ -141,7 +141,7 @@ async function pollChain(chainKey, state, { announceExisting }, marketCap) {
   if (!state.recent) state.recent = []
 
   if (!state.seen[chainKey]) {
-    if (announceExisting) {
+    if (announceHistorical) {
       const samples = buys.slice(-3)
       for (const event of samples) {
         await enrichWalletTier(event)
@@ -164,7 +164,7 @@ async function pollChain(chainKey, state, { announceExisting }, marketCap) {
 
   for (const event of newBuys) {
     await enrichWalletTier(event)
-    if (announceExisting) await announceBuy(event)
+    await announceBuy(event)
     state.recent.push(publicEvent(event))
   }
 
