@@ -106,7 +106,7 @@ async function main() {
   setInterval(async () => {
     try {
       const nextState = await readState()
-      await pollAllChains(nextState, { announceExisting: true })
+      await pollAllChains(nextState, { announceExisting: false })
       await writeState(nextState)
     } catch (err) {
       console.error(`[buy-bot] ${err.stack || err.message}`)

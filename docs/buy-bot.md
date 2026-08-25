@@ -22,6 +22,8 @@ Run continuously:
 npm run buybot:watch
 ```
 
+Watch mode primes silently when no state file exists. It does not post historical sample buys on startup or after a missing state file.
+
 ## Environment Variables
 
 Required to post alerts:
