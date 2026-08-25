@@ -5,4 +5,5 @@ dist/
 .vercel
 *.local
 .claude/settings.local.json
+.buy-bot-state.json
 .DS_Store
