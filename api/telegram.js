@@ -666,6 +666,7 @@ export default async function handler(req, res) {
         `/gnx — meh\n` +
         `/gmx — /lorniko\n` +
         `/chatid — Show this chat ID\n` +
+        `/emojiid — Show custom emoji IDs\n` +
         `/remind — Set, list, or cancel reminders\n` +
         `/dashboard — Open the dashboard`
       )
@@ -689,6 +690,24 @@ export default async function handler(req, res) {
         `Type: ${escapeHTML(chat.type || 'unknown')}\n` +
         `ID: <code>${chatId}</code>`
       )
+
+    } else if (text.startsWith('/emojiid')) {
+      const entities = [...(message.entities || []), ...(message.caption_entities || [])]
+      const customEmojiIds = [...new Set(entities
+        .filter(entity => entity.type === 'custom_emoji' && entity.custom_emoji_id)
+        .map(entity => entity.custom_emoji_id))]
+
+      if (!customEmojiIds.length) {
+        await sendMessage(chatId,
+          `Send this command with a Telegram custom emoji in the same message:\n` +
+          `<code>/emojiid 🪙</code>`
+        )
+      } else {
+        await sendMessage(chatId,
+          `<b>Custom Emoji ID</b>\n` +
+          customEmojiIds.map(id => `<code>${id}</code>`).join('\n')
+        )
+      }
 
     } else if (text.startsWith('/remind')) {
       const toggle = parseReminderToggle(rawText)
