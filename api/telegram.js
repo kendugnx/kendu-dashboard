@@ -7,9 +7,30 @@ const LP_ETH        = '0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
 const LP_BASE       = '0xFBFD0e1838A101a26FDB5D4ae0B4D17153eCA66B'
 const LP_SOL        = 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK'
 const BUY_CHAINS    = [
-  { label: 'ETH', network: 'eth', pool: LP_ETH, spentSymbol: 'ETH' },
-  { label: 'BASE', network: 'base', pool: LP_BASE.toLowerCase(), spentSymbol: 'ETH' },
-  { label: 'SOL', network: 'solana', pool: LP_SOL, spentSymbol: 'SOL' },
+  {
+    label: 'ETH',
+    network: 'eth',
+    pool: LP_ETH,
+    spentSymbol: 'ETH',
+    txUrl: hash => `https://etherscan.io/tx/${hash}`,
+    walletUrl: wallet => `https://etherscan.io/address/${wallet}`,
+  },
+  {
+    label: 'BASE',
+    network: 'base',
+    pool: LP_BASE.toLowerCase(),
+    spentSymbol: 'ETH',
+    txUrl: hash => `https://basescan.org/tx/${hash}`,
+    walletUrl: wallet => `https://basescan.org/address/${wallet}`,
+  },
+  {
+    label: 'SOL',
+    network: 'solana',
+    pool: LP_SOL,
+    spentSymbol: 'SOL',
+    txUrl: hash => `https://solscan.io/tx/${hash}`,
+    walletUrl: wallet => `https://solscan.io/account/${wallet}`,
+  },
 ]
 const ARB_EFF       = 0.6
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
@@ -127,7 +148,8 @@ async function latestBuysText() {
     try {
       const buys = await fetchLatestChainBuys(chain)
       if (!buys.length) return `<b>${chain.label}</b>\nNo recent buys found.`
-      return [`<b>${chain.label}</b>`, ...buys.map(formatBuyListItem)].join('\n\n')
+      const note = buys.length < 3 ? [`Only ${buys.length} recent ${buys.length === 1 ? 'buy' : 'buys'} available.`] : []
+      return [`<b>${chain.label}</b>`, ...buys.map(formatBuyListItem), ...note].join('\n\n')
     } catch (err) {
       console.error(`[buys:${chain.label}] ${err.message}`)
       return `<b>${chain.label}</b>\nUnable to load recent buys.`
@@ -157,7 +179,15 @@ function normalizeBuyListTrade(chain, trade) {
   const spentNative = Number(attr.from_token_amount)
   const tokens = Number(attr.to_token_amount)
   if (!isFinite(timestamp) || !isFinite(usd) || !isFinite(tokens)) return null
-  return { chain, timestamp, usd, spentNative, tokens }
+  return {
+    chain,
+    timestamp,
+    usd,
+    spentNative,
+    tokens,
+    hash: attr.tx_hash,
+    wallet: attr.tx_from_address,
+  }
 }
 
 function formatBuyListItem(buy) {
@@ -166,7 +196,15 @@ function formatBuyListItem(buy) {
     `-${formatBuyTimestamp(buy.timestamp)}-`,
     `Spent: <b>${formatExactUSD(buy.usd)}</b>${native}`,
     `Got: <b>${formatTokenAmount(buy.tokens)} Kendu</b>`,
+    formatBuyLinks(buy),
   ].join('\n')
+}
+
+function formatBuyLinks(buy) {
+  const links = []
+  if (buy.wallet) links.push(`<a href="${buy.chain.walletUrl(buy.wallet)}">Wallet</a>`)
+  if (buy.hash) links.push(`<a href="${buy.chain.txUrl(buy.hash)}">TX</a>`)
+  return links.length ? links.join(' / ') : ''
 }
 
 function formatBuyTimestamp(timestamp) {
