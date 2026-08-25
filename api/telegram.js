@@ -8,6 +8,7 @@ const LP_BASE       = '0xFBFD0e1838A101a26FDB5D4ae0B4D17153eCA66B'
 const LP_SOL        = 'B34Pu6w8eecYRXLEDxBCPy5JoFLy3iycLAPJpYiwbKMK'
 const BUY_CHAINS    = [
   {
+    key: 'eth',
     label: 'ETH',
     network: 'eth',
     pool: LP_ETH,
@@ -16,6 +17,7 @@ const BUY_CHAINS    = [
     walletUrl: wallet => `https://etherscan.io/address/${wallet}`,
   },
   {
+    key: 'base',
     label: 'BASE',
     network: 'base',
     pool: LP_BASE.toLowerCase(),
@@ -24,6 +26,7 @@ const BUY_CHAINS    = [
     walletUrl: wallet => `https://basescan.org/address/${wallet}`,
   },
   {
+    key: 'sol',
     label: 'SOL',
     network: 'solana',
     pool: LP_SOL,
@@ -167,6 +170,7 @@ async function fetchLatestChainBuys(chain) {
   return (json?.data || [])
     .map(trade => normalizeBuyListTrade(chain, trade))
     .filter(Boolean)
+    .filter(buy => buy.usd >= buyMinUsd(chain.key))
     .slice(0, 1)
 }
 
@@ -204,6 +208,10 @@ function formatBuyLinks(buy) {
   if (buy.wallet) links.push(`<a href="${buy.chain.walletUrl(buy.wallet)}">Wallet</a>`)
   if (buy.hash) links.push(`<a href="${buy.chain.txUrl(buy.hash)}">TX</a>`)
   return links.length ? links.join(' / ') : ''
+}
+
+function buyMinUsd(chainKey) {
+  return Number(process.env[`BUY_BOT_${String(chainKey).toUpperCase()}_MIN_USD`] || process.env.BUY_BOT_MIN_USD || 5)
 }
 
 function formatBuyTimestamp(timestamp) {
