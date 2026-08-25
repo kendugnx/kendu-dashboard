@@ -119,11 +119,11 @@ function fmt(n) {
   return '$' + n.toFixed(2)
 }
 
-async function sendMessage(chatId, text) {
+async function sendMessage(chatId, text, options = {}) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...options }),
   })
 }
 
@@ -796,7 +796,7 @@ export default async function handler(req, res) {
       await sendMessage(chatId, 'Good Morniko 😍')
 
     } else if (text.startsWith('/buys')) {
-      await sendMessage(chatId, await latestBuysText())
+      await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
 
     } else if (text.startsWith('/chatid')) {
       const chat = message.chat || {}
