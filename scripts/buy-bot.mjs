@@ -582,7 +582,7 @@ function tierForTokens(tokens) {
 }
 
 function minUsd(chainKey) {
-  return Number(process.env[`BUY_BOT_${chainKey.toUpperCase()}_MIN_USD`] || process.env.BUY_BOT_MIN_USD || 0)
+  return Number(process.env[`BUY_BOT_${chainKey.toUpperCase()}_MIN_USD`] || process.env.BUY_BOT_MIN_USD || 5)
 }
 
 function fmtUSD(n) {
