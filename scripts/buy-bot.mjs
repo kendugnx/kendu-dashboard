@@ -62,27 +62,27 @@ const CHAINS = {
 }
 
 const TIERS = [
-  { name: 'Seaweed', min: 0, max: 1e6 },
-  { name: 'Plankton', min: 1e6, max: 5e6 },
-  { name: 'Shrimp', min: 5e6, max: 10e6 },
-  { name: 'Magikarp', min: 10e6, max: 20e6 },
-  { name: 'Crab', min: 20e6, max: 35e6 },
-  { name: 'Sardine', min: 35e6, max: 50e6 },
-  { name: 'Stingray', min: 50e6, max: 75e6 },
-  { name: 'Octopus', min: 75e6, max: 100e6 },
-  { name: 'Dolphin', min: 100e6, max: 150e6 },
-  { name: 'Barracuda', min: 150e6, max: 200e6 },
-  { name: 'Shark', min: 200e6, max: 300e6 },
-  { name: 'Orca', min: 300e6, max: 400e6 },
-  { name: 'Swordfish', min: 400e6, max: 500e6 },
-  { name: 'Whale', min: 500e6, max: 700e6 },
-  { name: 'Leviathan', min: 700e6, max: 900e6 },
-  { name: 'Kraken', min: 900e6, max: 1.2e9 },
-  { name: 'Chadasaurus', min: 1.2e9, max: 1.6e9 },
-  { name: 'Megalodon', min: 1.6e9, max: 2.3e9 },
-  { name: 'Gyarados', min: 2.3e9, max: 3.5e9 },
-  { name: 'Godwhale', min: 3.5e9, max: 4.5e9 },
-  { name: 'Eternal', min: 4.5e9, max: Infinity },
+  { name: 'Seaweed', emoji: '🌿', emojiId: '5832357677191141172', min: 0, max: 1e6 },
+  { name: 'Plankton', emoji: '🦠', emojiId: '5832427964330941051', min: 1e6, max: 5e6 },
+  { name: 'Shrimp', emoji: '🦐', emojiId: '5834823160217737467', min: 5e6, max: 10e6 },
+  { name: 'Magikarp', emoji: '🐡', emojiId: '5832615323689293877', min: 10e6, max: 20e6 },
+  { name: 'Crab', emoji: '🦀', emojiId: '5834769954162874792', min: 20e6, max: 35e6 },
+  { name: 'Sardine', emoji: '🎣', emojiId: '5832239986497296976', min: 35e6, max: 50e6 },
+  { name: 'Stingray', emoji: '🐭', emojiId: '5834456971306079760', min: 50e6, max: 75e6 },
+  { name: 'Octopus', emoji: '🐙', emojiId: '5832565811306305131', min: 75e6, max: 100e6 },
+  { name: 'Dolphin', emoji: '🐬', emojiId: '5832477072987002095', min: 100e6, max: 150e6 },
+  { name: 'Barracuda', emoji: '🐟', emojiId: '5832657547512780826', min: 150e6, max: 200e6 },
+  { name: 'Shark', emoji: '🦈', emojiId: '5834936242411673204', min: 200e6, max: 300e6 },
+  { name: 'Orca', emoji: '🐠', emojiId: '5832579447827470721', min: 300e6, max: 400e6 },
+  { name: 'Swordfish', emoji: '🗡', emojiId: '5832287132353305493', min: 400e6, max: 500e6 },
+  { name: 'Whale', emoji: '🐳', emojiId: '5834535526257925548', min: 500e6, max: 700e6 },
+  { name: 'Leviathan', emoji: '🐉', emojiId: '5832266593819695132', min: 700e6, max: 900e6 },
+  { name: 'Kraken', emoji: '🦑', emojiId: '5832492358775610203', min: 900e6, max: 1.2e9 },
+  { name: 'Chadasaurus', displayName: 'Chadadaurus', emoji: '🦖', emojiId: '5832696885118246980', min: 1.2e9, max: 1.6e9 },
+  { name: 'Megalodon', emoji: '🐋', emojiId: '5834535625042172834', min: 1.6e9, max: 2.3e9 },
+  { name: 'Gyarados', emoji: '🐲', emojiId: '5834903415976631260', min: 2.3e9, max: 3.5e9 },
+  { name: 'Godwhale', emoji: '🌌', emojiId: '5832677931427567261', min: 3.5e9, max: 4.5e9 },
+  { name: 'Eternal', displayName: 'Kendu Eternal', emoji: '🔥', emojiId: '5832546367989356475', min: 4.5e9, max: Infinity },
 ]
 
 const args = new Set(process.argv.slice(2))
@@ -270,7 +270,7 @@ function sleep(ms) {
 async function enrichWalletTier(event) {
   const chain = CHAINS[event.chainKey]
   if (!chain || !event.wallet) {
-    event.tierText = tierForTokens(event.tokens)
+    event.tierText = tierLabel(tierForTokens(event.tokens))
     return
   }
 
@@ -291,7 +291,7 @@ async function enrichWalletTier(event) {
     if (!isFinite(postBalance)) throw new Error('missing wallet balance')
     if (postBalance + 1 < event.tokens * 0.5) {
       event.postBalance = postBalance
-      event.tierText = `Current Tier: ${tierForBalance(postBalance)}`
+      event.tierText = `Current Tier: ${tierLabel(tierForBalance(postBalance))}`
       return
     }
 
@@ -429,13 +429,14 @@ function rpcUrl(chain) {
 function tierTransitionText(preBalance, postBalance) {
   const preTier = tierForBalance(preBalance)
   const postTier = tierForBalance(postBalance)
-  if (preBalance <= 0) return `New Holder -> ${postTier}`
-  if (preTier !== postTier) return `${preTier} -> ${postTier}`
-  return `Current Tier: ${postTier}`
+  if (!postTier) return 'Current Tier Unavailable'
+  if (preBalance <= 0) return `New Holder -> ${tierLabel(postTier)}`
+  if (preTier?.name !== postTier.name) return `${preTier ? tierLabel(preTier) : 'None'} -> ${tierLabel(postTier)}`
+  return `Current Tier: ${tierLabel(postTier)}`
 }
 
 function tierForBalance(tokens) {
-  if (!isFinite(tokens) || tokens <= 0) return 'None'
+  if (!isFinite(tokens) || tokens <= 0) return null
   return tierForTokens(tokens)
 }
 
@@ -602,7 +603,21 @@ function escapeHTML(value) {
 }
 
 function tierForTokens(tokens) {
-  return (TIERS.find(t => tokens >= t.min && tokens < t.max) || TIERS[TIERS.length - 1]).name
+  return TIERS.find(t => tokens >= t.min && tokens < t.max) || TIERS[TIERS.length - 1]
+}
+
+function tierLabel(tier) {
+  if (!tier) return 'None'
+  const name = escapeHTML(tier.displayName || tier.name)
+  const emoji = customEmoji(tier.emojiId, tier.emoji)
+  return `${emoji} ${name}`
+}
+
+function customEmoji(emojiId, fallbackEmoji) {
+  if (/^\d{10,30}$/.test(String(emojiId || ''))) {
+    return `<tg-emoji emoji-id="${emojiId}">${escapeHTML(fallbackEmoji)}</tg-emoji>`
+  }
+  return escapeHTML(fallbackEmoji || '')
 }
 
 function minUsd(chainKey) {
