@@ -78,7 +78,7 @@ const TIERS = [
   { name: 'Whale', emoji: '🐳', emojiId: '5834535526257925548', min: 500e6, max: 700e6 },
   { name: 'Leviathan', emoji: '🐉', emojiId: '5832266593819695132', min: 700e6, max: 900e6 },
   { name: 'Kraken', emoji: '🦑', emojiId: '5832492358775610203', min: 900e6, max: 1.2e9 },
-  { name: 'Chadasaurus', displayName: 'Chadadaurus', emoji: '🦖', emojiId: '5832696885118246980', min: 1.2e9, max: 1.6e9 },
+  { name: 'Chadasaurus', emoji: '🦖', emojiId: '5832696885118246980', min: 1.2e9, max: 1.6e9 },
   { name: 'Megalodon', emoji: '🐋', emojiId: '5834535625042172834', min: 1.6e9, max: 2.3e9 },
   { name: 'Gyarados', emoji: '🐲', emojiId: '5834903415976631260', min: 2.3e9, max: 3.5e9 },
   { name: 'Godwhale', emoji: '🌌', emojiId: '5832677931427567261', min: 3.5e9, max: 4.5e9 },
