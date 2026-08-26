@@ -802,6 +802,9 @@ export default async function handler(req, res) {
       await sendMessage(chatId, '/lorniko')
       await sendMessage(chatId, 'Good Morniko 😍')
 
+    } else if (text.startsWith('/gulden')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/gulden.jpeg')
+
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
 
