@@ -282,6 +282,7 @@ async function enrichWalletTier(event) {
       if (isFinite(recipient.preBalance) && isFinite(recipient.postBalance)) {
         event.preBalance = recipient.preBalance
         event.postBalance = recipient.postBalance
+        event.positionText = positionIncreaseText(event)
         event.tierText = tierTransitionText(recipient.preBalance, recipient.postBalance)
         return
       }
@@ -298,6 +299,7 @@ async function enrichWalletTier(event) {
     const preBalance = Math.max(0, postBalance - event.tokens)
     event.postBalance = postBalance
     event.preBalance = preBalance
+    event.positionText = positionIncreaseText(event)
     event.tierText = tierTransitionText(preBalance, postBalance)
   } catch (err) {
     console.error(`[${chain.label}] wallet balance unavailable for ${event.wallet}: ${err.message}`)
@@ -435,6 +437,23 @@ function tierTransitionText(preBalance, postBalance) {
   return `Current Tier: ${tierLabel(postTier)}`
 }
 
+function positionIncreaseText(event) {
+  const preBalance = Number(event.preBalance)
+  if (!isFinite(preBalance) || preBalance <= 0) return '+100%'
+
+  const boughtTokens = isFinite(event.postBalance)
+    ? Math.max(0, Number(event.postBalance) - preBalance)
+    : Number(event.tokens)
+  if (!isFinite(boughtTokens) || boughtTokens <= 0) return 'Unavailable'
+
+  const pct = (boughtTokens / preBalance) * 100
+  if (!isFinite(pct)) return 'Unavailable'
+  return `+${pct.toLocaleString('en-US', {
+    minimumFractionDigits: pct >= 10 ? 1 : 2,
+    maximumFractionDigits: pct >= 10 ? 1 : 2,
+  })}%`
+}
+
 function tierForBalance(tokens) {
   if (!isFinite(tokens) || tokens <= 0) return null
   return tierForTokens(tokens)
@@ -569,6 +588,7 @@ function formatBuyAlert(event) {
     '',
     `🔀 Spent: <b>${fmtUSD(event.usd)}</b>${isFinite(event.spentNative) ? ` (${fmtNative(event.spentNative)} ${event.spentSymbol})` : ''}`,
     `🔀 Got: <b>${fmtTokens(event.tokens)} Kendu</b>`,
+    `⬆️ Position: <b>${event.positionText || 'Unavailable'}</b>`,
     `👤 <a href="${event.walletUrl}">Wallet</a> / <a href="${event.txUrl}">TX</a>`,
     `💼 <b>${event.tierText || 'Current Tier Unavailable'}</b>`,
     `🏦 Market Cap: <b>${fmtUSD(event.marketCap)}</b>`,
