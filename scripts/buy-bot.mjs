@@ -338,7 +338,25 @@ async function resolveEvmTokenRecipient(chain, event) {
     .filter(item => item.wallet.toLowerCase() !== chain.pool.toLowerCase())
     .sort((a, b) => Math.abs(a.amount - event.tokens) - Math.abs(b.amount - event.tokens))
 
-  return candidates[0] ? { wallet: candidates[0].wallet } : null
+  const recipient = candidates[0]
+  if (!recipient) return null
+
+  if (receipt?.blockNumber) {
+    try {
+      const postBalance = await fetchEvmTokenBalance(chain, recipient.wallet, receipt.blockNumber)
+      if (isFinite(postBalance)) {
+        return {
+          wallet: recipient.wallet,
+          preBalance: Math.max(0, postBalance - recipient.amount),
+          postBalance,
+        }
+      }
+    } catch (err) {
+      console.error(`[${chain.label}] block balance unavailable for ${recipient.wallet}: ${err.message}`)
+    }
+  }
+
+  return { wallet: recipient.wallet }
 }
 
 async function resolveSolanaTokenRecipient(chain, event) {
@@ -382,14 +400,14 @@ async function fetchWalletTokenBalance(chain, wallet) {
   return null
 }
 
-async function fetchEvmTokenBalance(chain, wallet) {
+async function fetchEvmTokenBalance(chain, wallet, blockTag = 'latest') {
   if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return null
   const data = `0x70a08231${wallet.slice(2).padStart(64, '0')}`
   const result = await postRPC(rpcUrl(chain), {
     jsonrpc: '2.0',
     id: 1,
     method: 'eth_call',
-    params: [{ to: chain.token, data }, 'latest'],
+    params: [{ to: chain.token, data }, blockTag],
   })
   if (!/^0x[0-9a-fA-F]+$/.test(result || '')) return null
   return Number(BigInt(result)) / 10 ** chain.decimals
