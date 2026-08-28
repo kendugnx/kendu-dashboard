@@ -439,7 +439,7 @@ function tierTransitionText(preBalance, postBalance) {
 
 function positionIncreaseText(event) {
   const preBalance = Number(event.preBalance)
-  if (!isFinite(preBalance) || preBalance <= 0) return '+100%'
+  if (!isFinite(preBalance) || preBalance < 1) return '+100%'
 
   const boughtTokens = isFinite(event.postBalance)
     ? Math.max(0, Number(event.postBalance) - preBalance)
