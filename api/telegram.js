@@ -783,6 +783,7 @@ export default async function handler(req, res) {
         `/holders — Holders chart\n` +
         `/volume — Volume chart\n` +
         `/snapshot — Generate 24h snapshot\n` +
+        `/whalechart — Whale chart\n` +
         `/buys — Latest buys by chain\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
@@ -804,6 +805,9 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/gulden')) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/gulden.jpeg')
+
+    } else if (text.startsWith('/whalechart')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/whalechart.jpeg')
 
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
