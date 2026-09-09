@@ -807,7 +807,7 @@ export default async function handler(req, res) {
       await sendPhoto(chatId, 'https://kendu-dashboard.com/gulden.jpeg')
 
     } else if (text.startsWith('/whalechart')) {
-      await sendPhoto(chatId, 'https://kendu-dashboard.com/whalechart.jpeg')
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/whalechart.jpg')
 
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
