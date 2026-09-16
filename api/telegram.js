@@ -46,6 +46,11 @@ const HHI_EXCLUDED = [
 ]
 
 const HOLDERS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTD6EM3vr9AZzq8WDqFpxLEQOxqEBc-w89053lNBDed4AUcxKfeVl1lSPiK9bUJFkPN1Y3X-tVXrGnG/pub?gid=584295169&single=true&output=csv'
+const SOCIAL_LINK_HOSTS = [
+  { source: 'X', hosts: ['x.com', 'twitter.com', 'mobile.twitter.com'] },
+  { source: 'Reddit', hosts: ['reddit.com', 'www.reddit.com', 'old.reddit.com', 'redd.it'] },
+  { source: 'Stocktwits', hosts: ['stocktwits.com', 'www.stocktwits.com'] },
+]
 
 const REMINDER_MOD_USER_IDS = new Set([
   7414795595,
@@ -444,6 +449,100 @@ async function reminderApp(action, payload = {}) {
   return json
 }
 
+function extractTrackedLinks(message) {
+  const text = message.text || message.caption || ''
+  if (!text) return []
+
+  const urls = new Set()
+  const entities = [...(message.entities || []), ...(message.caption_entities || [])]
+  for (const entity of entities) {
+    if (entity.type === 'text_link' && entity.url) {
+      urls.add(entity.url)
+    } else if (entity.type === 'url' && Number.isInteger(entity.offset) && Number.isInteger(entity.length)) {
+      urls.add(text.slice(entity.offset, entity.offset + entity.length))
+    }
+  }
+
+  const urlMatches = text.match(/https?:\/\/[^\s<>"']+/gi) || []
+  urlMatches.forEach(url => urls.add(url))
+
+  return [...urls]
+    .map(url => normalizeTrackedLink(url, text))
+    .filter(Boolean)
+}
+
+function normalizeTrackedLink(rawUrl, messageText) {
+  const cleanedUrl = String(rawUrl || '').replace(/[).,\]]+$/g, '')
+  try {
+    const parsed = new URL(cleanedUrl)
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '')
+    const match = SOCIAL_LINK_HOSTS.find(item => item.hosts.some(allowed => host === allowed || host.endsWith(`.${allowed}`)))
+    if (!match) return null
+    return {
+      source: match.source,
+      url: parsed.toString(),
+      text: messageText.replace(/\s+/g, ' ').trim().slice(0, 220),
+    }
+  } catch {
+    return null
+  }
+}
+
+async function logTrackedLinks(message, chatId) {
+  const links = extractTrackedLinks(message)
+  if (!links.length) return
+
+  try {
+    await reminderApp('logLinks', {
+      chatId,
+      chatTitle: message.chat?.title || '',
+      createdAt: (message.date ? Number(message.date) * 1000 : Date.now()),
+      createdBy: message.from?.username ? `@${message.from.username}` : String(message.from?.id || ''),
+      messageId: message.message_id || '',
+      links,
+    })
+  } catch (err) {
+    console.error(`[links] ${err.message}`)
+  }
+}
+
+function parseLatestLinksFilter(rawText) {
+  const arg = rawText.replace(/^\/(?:latestlinks|links)(?:@\w+)?\s*/i, '').trim().toLowerCase()
+  if (!arg || arg === 'all') return null
+  if (['x', 'twitter'].includes(arg)) return 'X'
+  if (['reddit', 'redd'].includes(arg)) return 'Reddit'
+  if (['stocktwits', 'st'].includes(arg)) return 'Stocktwits'
+  return 'unknown'
+}
+
+function formatLatestLinks(links, source) {
+  if (!links.length) {
+    return source
+      ? `No saved ${escapeHTML(source)} links yet.`
+      : 'No saved X, Reddit, or Stocktwits links yet.'
+  }
+
+  const title = source ? `Latest ${source} Links` : 'Latest Social Links'
+  const lines = links.map((link, i) => {
+    const when = formatLinkTime(link.createdAt)
+    const by = link.createdBy ? ` by ${escapeHTML(link.createdBy)}` : ''
+    return `${i + 1}. <b>${escapeHTML(link.source)}</b> — ${escapeHTML(when)}${by}\n${escapeHTML(link.url)}`
+  })
+  return `<b>${title}</b>\n\n${lines.join('\n\n')}`
+}
+
+function formatLinkTime(timestamp) {
+  if (!isFinite(Number(timestamp))) return 'unknown time'
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(new Date(Number(timestamp)))
+}
+
 async function getPrice() {
   const [ethRes, kenduRes] = await Promise.all([
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' }),
@@ -761,9 +860,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('OK')
 
   const { message } = req.body || {}
-  if (!message?.text) return res.status(200).send('OK')
+  if (!message?.text && !message?.caption) return res.status(200).send('OK')
 
   const chatId = message.chat.id
+  await logTrackedLinks(message, chatId)
+
+  if (!message.text) return res.status(200).send('OK')
+
   const rawText = message.text.trim()
   const text   = rawText.toLowerCase()
 
@@ -785,6 +888,7 @@ export default async function handler(req, res) {
         `/snapshot — Generate 24h snapshot\n` +
         `/whalechart — Whale chart\n` +
         `/buys — Latest buys by chain\n` +
+        `/latestlinks — Latest X, Reddit, and Stocktwits links\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
         `/gmx — /lorniko\n` +
@@ -811,6 +915,15 @@ export default async function handler(req, res) {
 
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
+
+    } else if (text.startsWith('/latestlinks') || text.startsWith('/links')) {
+      const source = parseLatestLinksFilter(rawText)
+      if (source === 'unknown') {
+        await sendMessage(chatId, '<b>Usage:</b>\n/latestlinks\n/latestlinks x\n/latestlinks reddit\n/latestlinks stocktwits')
+      } else {
+        const result = await reminderApp('listLinks', { chatId, source, limit: 10 })
+        await sendMessage(chatId, formatLatestLinks(result.links || [], source), { disable_web_page_preview: true })
+      }
 
     } else if (text.startsWith('/emojiid')) {
       const entities = [...(message.entities || []), ...(message.caption_entities || [])]

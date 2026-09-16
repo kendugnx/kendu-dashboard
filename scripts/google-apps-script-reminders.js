@@ -17,6 +17,7 @@
  */
 
 const SHEET_NAME = 'Reminders'
+const LINKS_SHEET_NAME = 'Links'
 const SETTINGS_SHEET_NAME = 'Settings'
 const REMINDERS_ENABLED_KEY = 'remindersEnabled'
 const HEADERS = [
@@ -33,9 +34,22 @@ const HEADERS = [
   'attempts',
   'lastError',
 ]
+const LINK_HEADERS = [
+  'id',
+  'chatId',
+  'chatTitle',
+  'source',
+  'url',
+  'text',
+  'createdAt',
+  'createdAtIso',
+  'createdBy',
+  'messageId',
+]
 
 function setupReminders() {
   getReminderSheet()
+  getLinkSheet()
   getSettingsSheet()
   if (getSetting(REMINDERS_ENABLED_KEY) === '') setSetting(REMINDERS_ENABLED_KEY, 'true')
 
@@ -59,11 +73,63 @@ function doPost(e) {
     if (data.action === 'cancel') return json(cancelReminder(data.chatId, data.id))
     if (data.action === 'getEnabled') return json({ ok: true, enabled: remindersEnabled() })
     if (data.action === 'setEnabled') return json(setRemindersEnabled(data.enabled))
+    if (data.action === 'logLinks') return json(logLinks(data))
+    if (data.action === 'listLinks') return json(listLinks(data))
 
     return json({ ok: false, error: 'Unknown action' })
   } catch (err) {
     return json({ ok: false, error: err.message })
   }
+}
+
+function logLinks(data) {
+  const links = Array.isArray(data.links) ? data.links : []
+  if (!links.length) return { ok: true, logged: 0 }
+
+  const sheet = getLinkSheet()
+  const createdAt = Number(data.createdAt || Date.now())
+  const rows = links
+    .filter(link => link && link.url && link.source)
+    .slice(0, 10)
+    .map(link => [
+      Utilities.getUuid(),
+      String(data.chatId || ''),
+      data.chatTitle || '',
+      link.source,
+      link.url,
+      link.text || '',
+      createdAt,
+      new Date(createdAt).toISOString(),
+      data.createdBy || '',
+      data.messageId || '',
+    ])
+
+  if (!rows.length) return { ok: true, logged: 0 }
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, LINK_HEADERS.length).setValues(rows)
+  return { ok: true, logged: rows.length }
+}
+
+function listLinks(data) {
+  const sheet = getLinkSheet()
+  const rows = getRows(sheet)
+  const targetChatId = String(data.chatId || '')
+  const source = String(data.source || '').toLowerCase()
+  const limit = Math.max(1, Math.min(25, Number(data.limit || 10)))
+
+  const links = rows
+    .filter(row => String(row.chatId) === targetChatId)
+    .filter(row => !source || String(row.source).toLowerCase() === source)
+    .sort((a, b) => Number(b.createdAt) - Number(a.createdAt))
+    .slice(0, limit)
+    .map(row => ({
+      source: row.source,
+      url: row.url,
+      text: row.text,
+      createdAt: Number(row.createdAt),
+      createdBy: row.createdBy,
+    }))
+
+  return { ok: true, links }
 }
 
 function scheduleReminder(reminder) {
@@ -197,6 +263,21 @@ function getReminderSheet() {
   const missingHeaders = HEADERS.some((header, i) => existing[i] !== header)
   if (missingHeaders) {
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+    sheet.setFrozenRows(1)
+  }
+
+  return sheet
+}
+
+function getLinkSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet()
+  let sheet = ss.getSheetByName(LINKS_SHEET_NAME)
+  if (!sheet) sheet = ss.insertSheet(LINKS_SHEET_NAME)
+
+  const existing = sheet.getRange(1, 1, 1, LINK_HEADERS.length).getValues()[0]
+  const missingHeaders = LINK_HEADERS.some((header, i) => existing[i] !== header)
+  if (missingHeaders) {
+    sheet.getRange(1, 1, 1, LINK_HEADERS.length).setValues([LINK_HEADERS])
     sheet.setFrozenRows(1)
   }
 
