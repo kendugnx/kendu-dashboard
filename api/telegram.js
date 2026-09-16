@@ -510,11 +510,13 @@ async function logTrackedLinks(message, chatId) {
 function parseLatestLinksFilter(rawText) {
   const arg = rawText.replace(/^\/(?:smash|latestlinks|links)(?:@\w+)?\s*/i, '').trim().toLowerCase()
   if (!arg || arg === 'all') return null
-  if (['x', 'twitter'].includes(arg)) return 'X'
-  if (['reddit', 'redd'].includes(arg)) return 'Reddit'
-  if (['stocktwits', 'st'].includes(arg)) return 'Stocktwits'
-  if (['instagram', 'ig', 'insta'].includes(arg)) return 'Instagram'
-  return 'unknown'
+  const words = arg.split(/[^a-z0-9]+/).filter(Boolean)
+  if (words.some(word => ['all', 'everything'].includes(word))) return null
+  if (words.some(word => ['x', 'twitter'].includes(word))) return 'X'
+  if (words.some(word => ['reddit', 'redd'].includes(word))) return 'Reddit'
+  if (words.some(word => ['stocktwits', 'st'].includes(word))) return 'Stocktwits'
+  if (words.some(word => ['instagram', 'ig', 'insta'].includes(word))) return 'Instagram'
+  return null
 }
 
 function formatLatestLinks(links, source) {
