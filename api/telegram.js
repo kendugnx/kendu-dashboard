@@ -498,7 +498,7 @@ async function logTrackedLinks(message, chatId) {
       chatId,
       chatTitle: message.chat?.title || '',
       createdAt: (message.date ? Number(message.date) * 1000 : Date.now()),
-      createdBy: message.from?.username ? `@${message.from.username}` : String(message.from?.id || ''),
+      createdBy: linkSenderName(message),
       messageId: message.message_id || '',
       links,
     })
@@ -527,10 +527,19 @@ function formatLatestLinks(links, source) {
   const title = source ? `Latest ${source} Links` : 'Latest Social Links'
   const lines = links.map((link, i) => {
     const when = formatLinkTime(link.createdAt)
-    const by = link.createdBy ? ` by ${escapeHTML(link.createdBy)}` : ''
+    const by = link.createdBy ? ` by ${escapeHTML(nonPingingName(link.createdBy))}` : ''
     return `${i + 1}. <b>${escapeHTML(link.source)}</b> — ${escapeHTML(when)}${by}\n${escapeHTML(link.url)}`
   })
   return `<b>${title}</b>\n\n${lines.join('\n\n')}`
+}
+
+function linkSenderName(message) {
+  if (message.from?.username) return message.from.username
+  return String(message.from?.id || '')
+}
+
+function nonPingingName(value) {
+  return String(value || '').replace(/^@+/, '')
 }
 
 function formatLinkTime(timestamp) {
