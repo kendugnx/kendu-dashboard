@@ -554,6 +554,12 @@ function formatLinkTime(timestamp) {
   }).format(new Date(Number(timestamp)))
 }
 
+function extractInlineCommand(rawText) {
+  const match = String(rawText || '').match(/(?:^|\s)(\/[A-Za-z0-9_]+(?:@[A-Za-z0-9_]+)?(?:[^\S\r\n]+[\s\S]*)?)$/)
+  if (!match) return null
+  return match[1].trim()
+}
+
 async function getPrice() {
   const [ethRes, kenduRes] = await Promise.all([
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true', { cache: 'no-store' }),
@@ -878,8 +884,11 @@ export default async function handler(req, res) {
 
   if (!message.text) return res.status(200).send('OK')
 
-  const rawText = message.text.trim()
-  const text   = rawText.toLowerCase()
+  const messageText = message.text.trim()
+  const rawText = extractInlineCommand(messageText)
+  if (!rawText) return res.status(200).send('OK')
+
+  const text = rawText.toLowerCase()
 
   try {
     if (text.startsWith('/start') || text.startsWith('/help')) {
