@@ -23,7 +23,7 @@ const commands = [
   { command: 'snapshot',  description: 'GENERATE 24H SNAPSHOT' },
   { command: 'whalechart', description: 'WHALE CHART' },
   { command: 'buys',      description: 'LATEST BUYS BY CHAIN' },
-  { command: 'latestlinks', description: 'LATEST SOCIAL LINKS' },
+  { command: 'smash',     description: 'LATEST SOCIAL LINKS' },
   { command: 'test',      description: 'TEST BOT RESPONSE' },
   { command: 'gnx',       description: 'MEH' },
   { command: 'gmx',       description: 'LORNIKO' },

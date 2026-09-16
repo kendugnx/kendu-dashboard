@@ -50,6 +50,7 @@ const SOCIAL_LINK_HOSTS = [
   { source: 'X', hosts: ['x.com', 'twitter.com', 'mobile.twitter.com'] },
   { source: 'Reddit', hosts: ['reddit.com', 'www.reddit.com', 'old.reddit.com', 'redd.it'] },
   { source: 'Stocktwits', hosts: ['stocktwits.com', 'www.stocktwits.com'] },
+  { source: 'Instagram', hosts: ['instagram.com', 'www.instagram.com'] },
 ]
 
 const REMINDER_MOD_USER_IDS = new Set([
@@ -507,11 +508,12 @@ async function logTrackedLinks(message, chatId) {
 }
 
 function parseLatestLinksFilter(rawText) {
-  const arg = rawText.replace(/^\/(?:latestlinks|links)(?:@\w+)?\s*/i, '').trim().toLowerCase()
+  const arg = rawText.replace(/^\/(?:smash|latestlinks|links)(?:@\w+)?\s*/i, '').trim().toLowerCase()
   if (!arg || arg === 'all') return null
   if (['x', 'twitter'].includes(arg)) return 'X'
   if (['reddit', 'redd'].includes(arg)) return 'Reddit'
   if (['stocktwits', 'st'].includes(arg)) return 'Stocktwits'
+  if (['instagram', 'ig', 'insta'].includes(arg)) return 'Instagram'
   return 'unknown'
 }
 
@@ -519,7 +521,7 @@ function formatLatestLinks(links, source) {
   if (!links.length) {
     return source
       ? `No saved ${escapeHTML(source)} links yet.`
-      : 'No saved X, Reddit, or Stocktwits links yet.'
+      : 'No saved X, Reddit, Stocktwits, or Instagram links yet.'
   }
 
   const title = source ? `Latest ${source} Links` : 'Latest Social Links'
@@ -888,7 +890,7 @@ export default async function handler(req, res) {
         `/snapshot — Generate 24h snapshot\n` +
         `/whalechart — Whale chart\n` +
         `/buys — Latest buys by chain\n` +
-        `/latestlinks — Latest X, Reddit, and Stocktwits links\n` +
+        `/smash — Latest X, Reddit, Stocktwits, and Instagram links\n` +
         `/test — passed\n` +
         `/gnx — meh\n` +
         `/gmx — /lorniko\n` +
@@ -916,10 +918,10 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/buys')) {
       await sendMessage(chatId, await latestBuysText(), { disable_web_page_preview: true })
 
-    } else if (text.startsWith('/latestlinks') || text.startsWith('/links')) {
+    } else if (text.startsWith('/smash') || text.startsWith('/latestlinks') || text.startsWith('/links')) {
       const source = parseLatestLinksFilter(rawText)
       if (source === 'unknown') {
-        await sendMessage(chatId, '<b>Usage:</b>\n/latestlinks\n/latestlinks x\n/latestlinks reddit\n/latestlinks stocktwits')
+        await sendMessage(chatId, '<b>Usage:</b>\n/smash\n/smash x\n/smash reddit\n/smash stocktwits\n/smash instagram')
       } else {
         const result = await reminderApp('listLinks', { chatId, source, limit: 10 })
         await sendMessage(chatId, formatLatestLinks(result.links || [], source), { disable_web_page_preview: true })
