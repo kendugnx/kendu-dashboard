@@ -445,7 +445,14 @@ async function reminderApp(action, payload = {}) {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ secret, action, ...payload }),
   })
-  const json = await r.json().catch(() => null)
+  const body = await r.text()
+  let json
+  try {
+    json = JSON.parse(body)
+  } catch {
+    const googleError = body.match(/<title>([^<]+)<\/title>/i)?.[1]
+    throw new Error(`Reminder app returned an invalid response (${r.status}${googleError ? `: ${googleError}` : ''})`)
+  }
   if (!r.ok || !json?.ok) throw new Error(json?.error || `Reminder app error (${r.status})`)
   return json
 }

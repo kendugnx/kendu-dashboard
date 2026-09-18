@@ -111,23 +111,28 @@ function logLinks(data) {
 
 function listLinks(data) {
   const sheet = getLinkSheet()
-  const rows = getRows(sheet)
   const targetChatId = String(data.chatId || '')
   const source = String(data.source || '').toLowerCase()
   const limit = Math.max(1, Math.min(25, Number(data.limit || 10)))
+  const links = []
+  const batchSize = 100
 
-  const links = rows
-    .filter(row => String(row.chatId) === targetChatId)
-    .filter(row => !source || String(row.source).toLowerCase() === source)
-    .sort((a, b) => Number(b.createdAt) - Number(a.createdAt))
-    .slice(0, limit)
-    .map(row => ({
-      source: row.source,
-      url: row.url,
-      text: row.text,
-      createdAt: Number(row.createdAt),
-      createdBy: row.createdBy,
-    }))
+  for (let end = sheet.getLastRow(); end > 1 && links.length < limit; end -= batchSize) {
+    const start = Math.max(2, end - batchSize + 1)
+    const rows = sheet.getRange(start, 1, end - start + 1, LINK_HEADERS.length).getValues()
+    for (let i = rows.length - 1; i >= 0 && links.length < limit; i--) {
+      const row = rows[i]
+      if (String(row[1]) !== targetChatId) continue
+      if (source && String(row[3]).toLowerCase() !== source) continue
+      links.push({
+        source: row[3],
+        url: row[4],
+        text: row[5],
+        createdAt: Number(row[6]),
+        createdBy: row[8],
+      })
+    }
+  }
 
   return { ok: true, links }
 }
