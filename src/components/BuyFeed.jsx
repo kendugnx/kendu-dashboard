@@ -33,7 +33,7 @@ export default function BuyFeed({ collapsed, onToggle }) {
     setSpinning(true)
     try {
       const r = await fetch(
-        `/api/etherscan?module=account&action=tokentx&contractaddress=${KENDU_ETH_CA}&address=${LPS.eth.address}&sort=desc&page=1&offset=50`
+        `/api/etherscan?module=account&action=tokentx&contractaddress=${KENDU_ETH_CA}&address=${LPS.eth.address}&sort=desc&page=1&offset=50&resolvewallets=1`
       )
       const j = await r.json()
       if (j.status !== '1' || !Array.isArray(j.result)) return
@@ -41,7 +41,8 @@ export default function BuyFeed({ collapsed, onToggle }) {
         const isBuy  = tx.from.toLowerCase() === POOL
         const tokens = Number(tx.value) / 1e18
         const tier   = tierForTokens(tokens)
-        return { hash: tx.hash, ts: parseInt(tx.timeStamp), isBuy, tokens, tier, wallet: isBuy ? tx.to : tx.from }
+        const transferWallet = isBuy ? tx.to : tx.from
+        return { hash: tx.hash, ts: parseInt(tx.timeStamp), isBuy, tokens, tier, wallet: tx.wallet || transferWallet }
       })
       setTxns(rows)
     } finally {
