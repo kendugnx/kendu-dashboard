@@ -38,7 +38,6 @@ const BUY_CHAINS    = [
 const ARB_EFF       = 0.6
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
 const INITIAL_POOL_WETH = 0.9
-const INITIAL_POOL_KENDU = 1e12
 
 // Curated CEX hot wallets excluded from HHI (EOAs, can't be detected on-chain) --
 // mirrors src/utils/constants.js EXCHANGE_WALLETS.
@@ -711,16 +710,11 @@ async function getPoolGrowth() {
   if (!r.ok) throw new Error(`Pool reserves returned ${r.status}`)
   const data = await r.json()
   const currentWeth = Number(data?.wethAmount)
-  const currentKendu = Number(data?.kenduAmount)
-  if (!isFinite(currentWeth) || currentWeth <= 0 || !isFinite(currentKendu) || currentKendu <= 0) {
-    throw new Error('Pool reserves unavailable')
-  }
+  if (!isFinite(currentWeth) || currentWeth <= 0) throw new Error('Pool reserves unavailable')
   return {
     currentWeth,
-    currentKendu,
     multiplier: currentWeth / INITIAL_POOL_WETH,
     wethChange: ((currentWeth / INITIAL_POOL_WETH) - 1) * 100,
-    kenduChange: ((currentKendu / INITIAL_POOL_KENDU) - 1) * 100,
   }
 }
 
@@ -1075,14 +1069,10 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/poolgrowth')) {
       const growth = await getPoolGrowth()
       const multiplier = growth.multiplier >= 100 ? growth.multiplier.toFixed(0) : growth.multiplier >= 10 ? growth.multiplier.toFixed(1) : growth.multiplier.toFixed(2)
-      const signedPct = value => `${value >= 0 ? '+' : ''}${value.toLocaleString('en-US', { maximumFractionDigits: 1 })}%`
       const amount = value => value.toLocaleString('en-US', { maximumFractionDigits: 2 })
       await sendMessage(chatId,
-        `The KENDU Uniswap V2 liquidity pool has grown <b>${multiplier}x</b> since its inception.\n\n` +
-        `<b>Starting ETH:</b> ${amount(INITIAL_POOL_WETH)}\n` +
-        `<b>Current ETH:</b> ${amount(growth.currentWeth)} (${signedPct(growth.wethChange)})\n\n` +
-        `<b>Starting KENDU:</b> ${amount(INITIAL_POOL_KENDU)}\n` +
-        `<b>Current KENDU:</b> ${amount(growth.currentKendu)} (${signedPct(growth.kenduChange)})`
+        `The KENDU Uniswap V2 liquidity pool has grown from ${amount(INITIAL_POOL_WETH)} ETH to ${amount(growth.currentWeth)} ETH, ` +
+        `a <b>${multiplier}x</b> [${growth.wethChange.toLocaleString('en-US', { maximumFractionDigits: 0 })}%] increase since its inception.`
       )
 
     } else if (text.startsWith('/holders')) {
