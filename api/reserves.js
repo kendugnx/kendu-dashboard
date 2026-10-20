@@ -42,12 +42,14 @@ export default async function handler(req, res) {
   const hex = hexResult.value
   // getReserves ABI: (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)
   // KENDU is token0 (0xaa95 < 0xc02a), WETH is token1
+  const reserve0 = BigInt('0x' + hex.slice(2, 66))
   const reserve1 = BigInt('0x' + hex.slice(66, 130))
+  const kenduAmount = Number(reserve0) / 1e18
   const wethAmount = Number(reserve1) / 1e18
 
   const ethPrice = ethPriceRes.status === 'fulfilled' ? ethPriceRes.value?.ethereum?.usd : null
   if (!ethPrice) return res.status(500).json({ error: 'no eth price' })
 
   const liquidityUSD = wethAmount * ethPrice * 2
-  res.json({ liquidityUSD, wethAmount, ethPrice })
+  res.json({ liquidityUSD, kenduAmount, wethAmount, ethPrice })
 }
