@@ -15,6 +15,7 @@ const commands = [
   { command: 'mcap',      description: 'KENDU MC' },
   { command: 'hhi',       description: 'CURRENT HHI INDEX' },
   { command: 'gas',       description: 'CURRENT ETH GAS FEES' },
+  { command: 'poolgrowth', description: 'UNISWAP V2 POOL GROWTH' },
   { command: 'wen',       description: 'X TO MC' },
   { command: 'calc',      description: 'HOLDINGS VALUE CALCULATOR' },
   { command: 'gains',     description: 'GAINS CALCULATOR' },
