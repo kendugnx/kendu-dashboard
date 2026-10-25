@@ -107,15 +107,15 @@ async function main() {
 
   if (!watchMode) return
 
-  setInterval(async () => {
+  while (true) {
+    await sleep(pollMs)
     try {
-      const nextState = await readState()
-      await pollAllChains(nextState, { announceHistorical: false })
-      await writeState(nextState)
+      await pollAllChains(state, { announceHistorical: false })
+      await writeState(state)
     } catch (err) {
       console.error(`[buy-bot] ${err.stack || err.message}`)
     }
-  }, pollMs)
+  }
 }
 
 function startHealthServer() {
@@ -171,6 +171,9 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
         await enrichWalletTier(event)
         await announceBuy(event)
         state.recent.push(publicEvent(event))
+        state.seen[chainKey] = event.id
+        state.recent = state.recent.slice(-500)
+        await writeState(state)
       }
     }
     if (latestId) state.seen[chainKey] = latestId
@@ -198,10 +201,11 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
     await enrichWalletTier(event)
     await announceBuy(event)
     state.recent.push(publicEvent(event))
+    state.seen[chainKey] = event.id
+    state.recent = state.recent.slice(-500)
+    await writeState(state)
   }
 
-  state.seen[chainKey] = newBuys.at(-1).id
-  state.recent = state.recent.slice(-500)
   console.log(`[${chain.label}] processed ${newBuys.length} new buys`)
 }
 
@@ -694,7 +698,9 @@ async function readState() {
 async function writeState(state) {
   const fs = await import('node:fs/promises')
   await fs.mkdir(dirname(stateFile), { recursive: true })
-  await fs.writeFile(stateFile, JSON.stringify(state, null, 2))
+  const tempFile = `${stateFile}.tmp-${process.pid}`
+  await fs.writeFile(tempFile, JSON.stringify(state, null, 2))
+  await fs.rename(tempFile, stateFile)
 }
 
 async function loadDotenv() {
