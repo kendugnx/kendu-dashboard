@@ -33,7 +33,9 @@ async function getReservesWithFallback(pool) {
 async function etherscan(params, tries = 4) {
   const query = new URLSearchParams(params)
   for (let attempt = 0; attempt < tries; attempt++) {
-    const response = await fetch(`https://kendu-dashboard.com/api/etherscan?${query}`, { cache: 'no-store' })
+    const retryQuery = new URLSearchParams(query)
+    retryQuery.set('_retry', String(attempt))
+    const response = await fetch(`https://kendu-dashboard.com/api/etherscan?${retryQuery}`, { cache: 'no-store' })
     if (!response.ok) throw new Error(`Etherscan returned ${response.status}`)
     const data = await response.json()
     const rateLimited = data?.status === '0' && /rate limit/i.test(`${data?.message || ''} ${data?.result || ''}`)

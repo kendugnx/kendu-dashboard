@@ -56,7 +56,7 @@ async function resolveTransactionWallets(transfers) {
 }
 
 export default async function handler(req, res) {
-  const { module: mod, action, resolvewallets, ...rest } = req.query
+  const { module: mod, action, resolvewallets, _retry, ...rest } = req.query
 
   if (!ALLOWED_ACTIONS.has(action)) {
     return res.status(400).json({ error: 'Action not permitted' })
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     if (action === 'tokentx' && resolvewallets === '1' && Array.isArray(data.result)) {
       data.result = await resolveTransactionWallets(data.result)
     }
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60')
+    res.setHeader('Cache-Control', data?.status === '0' ? 'no-store' : 's-maxage=30, stale-while-revalidate=60')
     return res.status(200).json(data)
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Proxy error' })
