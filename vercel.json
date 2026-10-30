@@ -1,7 +1,8 @@
 {
 "rewrites": [{ "source": "/((?!@|src|node_modules|assets|fonts|api|public|.*\\.mp4|.*\\.gif|.*\\.jpg|.*\\.jpeg|.*\\.png|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest|.*\\.js).*)", "destination": "/index.html" }],
   "functions": {
-    "api/snapshot-image.js": { "memory": 1536, "maxDuration": 30 }
+    "api/snapshot-image.js": { "memory": 1536, "maxDuration": 30 },
+    "api/reserves.js": { "maxDuration": 30 }
   },
   "headers": [
     {

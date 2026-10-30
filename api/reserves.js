@@ -30,11 +30,16 @@ async function getReservesWithFallback(pool) {
   throw new Error('all RPCs failed')
 }
 
-async function etherscan(params) {
+async function etherscan(params, tries = 4) {
   const query = new URLSearchParams(params)
-  const response = await fetch(`https://kendu-dashboard.com/api/etherscan?${query}`, { cache: 'no-store' })
-  if (!response.ok) throw new Error(`Etherscan returned ${response.status}`)
-  return response.json()
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const response = await fetch(`https://kendu-dashboard.com/api/etherscan?${query}`, { cache: 'no-store' })
+    if (!response.ok) throw new Error(`Etherscan returned ${response.status}`)
+    const data = await response.json()
+    const rateLimited = data?.status === '0' && /rate limit/i.test(`${data?.message || ''} ${data?.result || ''}`)
+    if (!rateLimited || attempt === tries - 1) return data
+    await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)))
+  }
 }
 
 function decodeSyncWeth(data) {
