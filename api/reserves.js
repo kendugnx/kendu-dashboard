@@ -99,6 +99,34 @@ async function getHistoricalWeth(pool, timestamp) {
   throw new Error('No historical pool reserve found')
 }
 
+async function getHistoricalEthPrice(timestamp) {
+  const params = new URLSearchParams({
+    vs_currency: 'usd',
+    from: String(timestamp),
+    to: String(timestamp + 86400),
+  })
+  let response
+  for (let attempt = 0; attempt < 3; attempt++) {
+    response = await fetch(`https://api.coingecko.com/api/v3/coins/ethereum/market_chart/range?${params}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    if (response.status !== 429) break
+    await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+  }
+  if (!response?.ok) throw new Error(`Historical ETH price returned ${response?.status || 'no response'}`)
+  const data = await response.json()
+  const prices = Array.isArray(data?.prices) ? data.prices : []
+  if (!prices.length) throw new Error('Historical ETH price unavailable')
+  const targetMs = timestamp * 1000
+  const closest = prices.reduce((best, point) =>
+    Math.abs(Number(point[0]) - targetMs) < Math.abs(Number(best[0]) - targetMs) ? point : best
+  )
+  const price = Number(closest[1])
+  if (!isFinite(price) || price <= 0) throw new Error('Invalid historical ETH price')
+  return price
+}
+
 export default async function handler(req, res) {
   const { pool, timestamp } = req.query
   if (!pool) return res.status(400).json({ error: 'missing pool' })
@@ -110,9 +138,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'invalid historical reserve request' })
     }
     try {
-      const historical = await getHistoricalWeth(pool, targetTimestamp)
+      const [historical, ethPrice] = await Promise.all([
+        getHistoricalWeth(pool, targetTimestamp),
+        getHistoricalEthPrice(targetTimestamp),
+      ])
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600')
-      return res.json(historical)
+      return res.json({
+        ...historical,
+        ethPrice,
+        liquidityUSD: historical.wethAmount * ethPrice * 2,
+      })
     } catch (err) {
       return res.status(500).json({ error: err.message || 'historical reserve lookup failed' })
     }

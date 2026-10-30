@@ -720,13 +720,24 @@ async function getPoolGrowth(days = null) {
   const historicalData = historicalResponse ? await historicalResponse.json() : null
   const currentWeth = Number(currentData?.wethAmount)
   const startingWeth = historicalData ? Number(historicalData?.wethAmount) : INITIAL_POOL_WETH
+  const currentLiquidityUSD = Number(currentData?.liquidityUSD)
+  const startingLiquidityUSD = historicalData ? Number(historicalData?.liquidityUSD) : null
   if (!isFinite(currentWeth) || currentWeth <= 0) throw new Error('Pool reserves unavailable')
   if (!isFinite(startingWeth) || startingWeth <= 0) throw new Error('Historical pool reserves unavailable')
+  const usesUsd = historicalData != null
+  if (usesUsd && (!isFinite(currentLiquidityUSD) || currentLiquidityUSD <= 0 || !isFinite(startingLiquidityUSD) || startingLiquidityUSD <= 0)) {
+    throw new Error('Historical pool value unavailable')
+  }
+  const currentValue = usesUsd ? currentLiquidityUSD : currentWeth
+  const startingValue = usesUsd ? startingLiquidityUSD : startingWeth
   return {
     currentWeth,
     startingWeth,
-    multiplier: currentWeth / startingWeth,
-    wethChange: ((currentWeth / startingWeth) - 1) * 100,
+    currentLiquidityUSD,
+    startingLiquidityUSD,
+    usesUsd,
+    multiplier: currentValue / startingValue,
+    change: ((currentValue / startingValue) - 1) * 100,
   }
 }
 
@@ -739,6 +750,7 @@ function parsePoolGrowthRange(rawText) {
   if (!Number.isInteger(count) || count <= 0) return undefined
   const unit = match[2].toLowerCase()
   const days = count * { d: 1, w: 7, m: 30, y: 365 }[unit]
+  if (days > 365) return undefined
   const names = { d: ['day', 'days'], w: ['week', 'weeks'], m: ['month', 'months'], y: ['year', 'years'] }
   return { days, label: `${count} ${names[unit][count === 1 ? 0 : 1]}` }
 }
@@ -1098,15 +1110,25 @@ export default async function handler(req, res) {
         return res.status(200).send('OK')
       }
       const growth = await getPoolGrowth(range?.days)
-      const multiplier = growth.multiplier >= 100 ? growth.multiplier.toFixed(0) : growth.multiplier >= 10 ? growth.multiplier.toFixed(1) : growth.multiplier.toFixed(2)
+      const multiplier = Math.abs(growth.change) < 1
+        ? growth.multiplier.toFixed(3)
+        : growth.multiplier >= 100 ? growth.multiplier.toFixed(0) : growth.multiplier >= 10 ? growth.multiplier.toFixed(1) : growth.multiplier.toFixed(2)
       const amount = value => value.toLocaleString('en-US', { maximumFractionDigits: 2 })
-      const pct = Math.abs(growth.wethChange).toLocaleString('en-US', { maximumFractionDigits: range ? 1 : 0 })
-      const direction = growth.wethChange >= 0 ? 'increase' : 'decrease'
+      const pct = Math.abs(growth.change).toLocaleString('en-US', { maximumFractionDigits: range ? 1 : 0 })
+      const direction = growth.change >= 0 ? 'increase' : 'decrease'
       const period = range ? `over the past ${range.label}` : 'since its inception'
-      await sendMessage(chatId,
-        `The KENDU Uniswap V2 liquidity pool has ${growth.wethChange >= 0 ? 'grown' : 'changed'} from ${amount(growth.startingWeth)} ETH to ${amount(growth.currentWeth)} ETH, ` +
-        `a <b>${multiplier}x</b> [${pct}%] ${direction} ${period}.`
-      )
+      if (growth.usesUsd) {
+        const usd = value => '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+        await sendMessage(chatId,
+          `The KENDU Uniswap V2 liquidity pool has ${growth.change >= 0 ? 'grown' : 'decreased'} from ${usd(growth.startingLiquidityUSD)} (${amount(growth.startingWeth)} ETH) ` +
+          `to ${usd(growth.currentLiquidityUSD)} (${amount(growth.currentWeth)} ETH), a <b>${multiplier}x</b> [${pct}%] ${direction} ${period}.`
+        )
+      } else {
+        await sendMessage(chatId,
+          `The KENDU Uniswap V2 liquidity pool has grown from ${amount(growth.startingWeth)} ETH to ${amount(growth.currentWeth)} ETH, ` +
+          `a <b>${multiplier}x</b> [${pct}%] increase ${period}.`
+        )
+      }
 
     } else if (text.startsWith('/holders')) {
       const parts = text.split(/\s+/).slice(1)
