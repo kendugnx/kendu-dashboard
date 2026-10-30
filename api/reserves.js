@@ -3,6 +3,10 @@ const RPCS = [
   'https://ethereum.publicnode.com',
   'https://cloudflare-eth.com',
 ]
+const KENDU_ETH_POOL = '0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
+const KENDU_POOL_CREATION_BLOCK = 19276187
+const KENDU_POOL_CREATION_TIMESTAMP = 1708520387
+const SYNC_TOPIC = '0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1'
 
 async function ethCall(rpc, to, data) {
   const r = await fetch(rpc, {
@@ -26,9 +30,88 @@ async function getReservesWithFallback(pool) {
   throw new Error('all RPCs failed')
 }
 
+async function etherscan(params) {
+  const apiKey = process.env.ETHERSCAN_API_KEY
+  if (!apiKey) throw new Error('Missing ETHERSCAN_API_KEY')
+  const query = new URLSearchParams({ chainid: '1', apikey: apiKey, ...params })
+  const response = await fetch(`https://api.etherscan.io/v2/api?${query}`, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Etherscan returned ${response.status}`)
+  return response.json()
+}
+
+function decodeSyncWeth(data) {
+  if (!/^0x[0-9a-fA-F]{128}$/.test(data || '')) throw new Error('Invalid historical reserve data')
+  return Number(BigInt(`0x${data.slice(66, 130)}`)) / 1e18
+}
+
+async function getHistoricalWeth(pool, timestamp) {
+  const blockResult = await etherscan({
+    module: 'block',
+    action: 'getblocknobytime',
+    timestamp: String(timestamp),
+    closest: 'before',
+  })
+  const targetBlock = Number(blockResult?.result)
+  if (blockResult?.status !== '1' || !Number.isInteger(targetBlock)) {
+    throw new Error(blockResult?.result || 'Historical block unavailable')
+  }
+  if (targetBlock < KENDU_POOL_CREATION_BLOCK) throw new Error('Requested timeframe predates the KENDU pool')
+
+  let span = 7200
+  for (let attempt = 0; attempt < 7; attempt++) {
+    const fromBlock = Math.max(KENDU_POOL_CREATION_BLOCK, targetBlock - span)
+    const logsResult = await etherscan({
+      module: 'logs',
+      action: 'getLogs',
+      fromBlock: String(fromBlock),
+      toBlock: String(targetBlock),
+      address: pool,
+      topic0: SYNC_TOPIC,
+      page: '1',
+      offset: '1000',
+    })
+    const logs = Array.isArray(logsResult?.result) ? logsResult.result : []
+    if (logs.length) {
+      const latest = logs.reduce((best, log) => {
+        const position = [Number.parseInt(log.blockNumber, 16), Number.parseInt(log.logIndex, 16)]
+        const bestPosition = best
+          ? [Number.parseInt(best.blockNumber, 16), Number.parseInt(best.logIndex, 16)]
+          : [-1, -1]
+        return position[0] > bestPosition[0] || (position[0] === bestPosition[0] && position[1] > bestPosition[1]) ? log : best
+      }, null)
+      return {
+        wethAmount: decodeSyncWeth(latest.data),
+        blockNumber: Number.parseInt(latest.blockNumber, 16),
+        asOfTimestamp: Number.parseInt(latest.timeStamp, 16),
+      }
+    }
+    if (logsResult?.status === '0' && !/no records/i.test(`${logsResult?.message || ''} ${logsResult?.result || ''}`)) {
+      throw new Error(logsResult?.result || 'Historical reserves unavailable')
+    }
+    if (fromBlock === KENDU_POOL_CREATION_BLOCK) break
+    span *= 4
+  }
+  throw new Error('No historical pool reserve found')
+}
+
 export default async function handler(req, res) {
-  const { pool } = req.query
+  const { pool, timestamp } = req.query
   if (!pool) return res.status(400).json({ error: 'missing pool' })
+
+  if (timestamp != null) {
+    const targetTimestamp = Number(timestamp)
+    if (pool.toLowerCase() !== KENDU_ETH_POOL || !Number.isInteger(targetTimestamp) ||
+        targetTimestamp < KENDU_POOL_CREATION_TIMESTAMP || targetTimestamp > Math.floor(Date.now() / 1000)) {
+      return res.status(400).json({ error: 'invalid historical reserve request' })
+    }
+    try {
+      const historical = await getHistoricalWeth(pool, targetTimestamp)
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600')
+      return res.json(historical)
+    } catch (err) {
+      return res.status(500).json({ error: err.message || 'historical reserve lookup failed' })
+    }
+  }
 
   const [hexResult, ethPriceRes] = await Promise.allSettled([
     getReservesWithFallback(pool),

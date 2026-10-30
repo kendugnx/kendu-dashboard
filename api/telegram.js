@@ -705,17 +705,42 @@ async function getVolume24h() {
   return Number(j?.data?.attributes?.volume_usd?.h24 ?? 0)
 }
 
-async function getPoolGrowth() {
-  const r = await fetch(`https://kendu-dashboard.com/api/reserves?pool=${LP_ETH}`, { cache: 'no-store' })
-  if (!r.ok) throw new Error(`Pool reserves returned ${r.status}`)
-  const data = await r.json()
-  const currentWeth = Number(data?.wethAmount)
+async function getPoolGrowth(days = null) {
+  const currentRequest = fetch(`https://kendu-dashboard.com/api/reserves?pool=${LP_ETH}`, { cache: 'no-store' })
+  const historicalRequest = days == null
+    ? null
+    : fetch(`https://kendu-dashboard.com/api/reserves?pool=${LP_ETH}&timestamp=${Math.floor((Date.now() - days * 86400000) / 1000)}`, { cache: 'no-store' })
+  const [currentResponse, historicalResponse] = await Promise.all([currentRequest, historicalRequest])
+  if (!currentResponse.ok) throw new Error(`Pool reserves returned ${currentResponse.status}`)
+  if (historicalResponse && !historicalResponse.ok) {
+    const error = await historicalResponse.json().catch(() => ({}))
+    throw new Error(error.error || `Historical reserves returned ${historicalResponse.status}`)
+  }
+  const currentData = await currentResponse.json()
+  const historicalData = historicalResponse ? await historicalResponse.json() : null
+  const currentWeth = Number(currentData?.wethAmount)
+  const startingWeth = historicalData ? Number(historicalData?.wethAmount) : INITIAL_POOL_WETH
   if (!isFinite(currentWeth) || currentWeth <= 0) throw new Error('Pool reserves unavailable')
+  if (!isFinite(startingWeth) || startingWeth <= 0) throw new Error('Historical pool reserves unavailable')
   return {
     currentWeth,
-    multiplier: currentWeth / INITIAL_POOL_WETH,
-    wethChange: ((currentWeth / INITIAL_POOL_WETH) - 1) * 100,
+    startingWeth,
+    multiplier: currentWeth / startingWeth,
+    wethChange: ((currentWeth / startingWeth) - 1) * 100,
   }
+}
+
+function parsePoolGrowthRange(rawText) {
+  const arg = rawText.replace(/^\/poolgrowth(?:@\w+)?\s*/i, '').trim()
+  if (!arg) return null
+  const match = arg.match(/^(\d+)(d|w|m|y)$/i)
+  if (!match) return undefined
+  const count = Number(match[1])
+  if (!Number.isInteger(count) || count <= 0) return undefined
+  const unit = match[2].toLowerCase()
+  const days = count * { d: 1, w: 7, m: 30, y: 365 }[unit]
+  const names = { d: ['day', 'days'], w: ['week', 'weeks'], m: ['month', 'months'], y: ['year', 'years'] }
+  return { days, label: `${count} ${names[unit][count === 1 ? 0 : 1]}` }
 }
 
 async function getVolumeCandles(days) {
@@ -922,7 +947,7 @@ export default async function handler(req, res) {
         `/mcap — Kendu MC\n` +
         `/hhi — Current HHI index\n` +
         `/gas — Current ETH gas fees\n` +
-        `/poolgrowth — Uniswap V2 pool growth since launch\n` +
+        `/poolgrowth [timeframe] — Uniswap V2 pool growth\n` +
         `/wen — X to MC\n` +
         `/calc — Holdings value calculator\n` +
         `/gains — Gains calculator\n` +
@@ -1067,12 +1092,20 @@ export default async function handler(req, res) {
       await sendMessage(chatId, `<b>Kendu Market Cap</b>\n${fmt(mc)}${fmtChange(kenduChange)}`)
 
     } else if (text.startsWith('/poolgrowth')) {
-      const growth = await getPoolGrowth()
+      const range = parsePoolGrowthRange(rawText)
+      if (range === undefined) {
+        await sendMessage(chatId, '<b>Usage:</b>\n/poolgrowth\n/poolgrowth 1d\n/poolgrowth 1w\n/poolgrowth 2m\n/poolgrowth 1y')
+        return res.status(200).send('OK')
+      }
+      const growth = await getPoolGrowth(range?.days)
       const multiplier = growth.multiplier >= 100 ? growth.multiplier.toFixed(0) : growth.multiplier >= 10 ? growth.multiplier.toFixed(1) : growth.multiplier.toFixed(2)
       const amount = value => value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+      const pct = Math.abs(growth.wethChange).toLocaleString('en-US', { maximumFractionDigits: range ? 1 : 0 })
+      const direction = growth.wethChange >= 0 ? 'increase' : 'decrease'
+      const period = range ? `over the past ${range.label}` : 'since its inception'
       await sendMessage(chatId,
-        `The KENDU Uniswap V2 liquidity pool has grown from ${amount(INITIAL_POOL_WETH)} ETH to ${amount(growth.currentWeth)} ETH, ` +
-        `a <b>${multiplier}x</b> [${growth.wethChange.toLocaleString('en-US', { maximumFractionDigits: 0 })}%] increase since its inception.`
+        `The KENDU Uniswap V2 liquidity pool has ${growth.wethChange >= 0 ? 'grown' : 'changed'} from ${amount(growth.startingWeth)} ETH to ${amount(growth.currentWeth)} ETH, ` +
+        `a <b>${multiplier}x</b> [${pct}%] ${direction} ${period}.`
       )
 
     } else if (text.startsWith('/holders')) {
