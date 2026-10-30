@@ -44,9 +44,12 @@ async function etherscan(params, tries = 4) {
   }
 }
 
-function decodeSyncWeth(data) {
+function decodeSyncReserves(data) {
   if (!/^0x[0-9a-fA-F]{128}$/.test(data || '')) throw new Error('Invalid historical reserve data')
-  return Number(BigInt(`0x${data.slice(66, 130)}`)) / 1e18
+  return {
+    kenduAmount: Number(BigInt(`0x${data.slice(2, 66)}`)) / 1e18,
+    wethAmount: Number(BigInt(`0x${data.slice(66, 130)}`)) / 1e18,
+  }
 }
 
 async function getHistoricalWeth(pool, timestamp) {
@@ -85,7 +88,7 @@ async function getHistoricalWeth(pool, timestamp) {
         return position[0] > bestPosition[0] || (position[0] === bestPosition[0] && position[1] > bestPosition[1]) ? log : best
       }, null)
       return {
-        wethAmount: decodeSyncWeth(latest.data),
+        ...decodeSyncReserves(latest.data),
         blockNumber: Number.parseInt(latest.blockNumber, 16),
         asOfTimestamp: Number.parseInt(latest.timeStamp, 16),
       }

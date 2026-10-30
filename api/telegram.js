@@ -38,6 +38,7 @@ const BUY_CHAINS    = [
 const ARB_EFF       = 0.6
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || 'M5XZ6NDDYYQ5HY9KVUQDJ12ME484DVEP4A'
 const INITIAL_POOL_WETH = 0.9
+const INITIAL_POOL_KENDU = 1e12
 
 // Curated CEX hot wallets excluded from HHI (EOAs, can't be detected on-chain) --
 // mirrors src/utils/constants.js EXCHANGE_WALLETS.
@@ -719,14 +720,23 @@ async function getPoolGrowth(days = null) {
   const currentData = await currentResponse.json()
   const historicalData = historicalResponse ? await historicalResponse.json() : null
   const currentWeth = Number(currentData?.wethAmount)
+  const currentKendu = Number(currentData?.kenduAmount)
   const startingWeth = historicalData ? Number(historicalData?.wethAmount) : INITIAL_POOL_WETH
+  const startingKendu = historicalData ? Number(historicalData?.kenduAmount) : INITIAL_POOL_KENDU
   if (!isFinite(currentWeth) || currentWeth <= 0) throw new Error('Pool reserves unavailable')
+  if (!isFinite(currentKendu) || currentKendu <= 0) throw new Error('Current KENDU reserves unavailable')
   if (!isFinite(startingWeth) || startingWeth <= 0) throw new Error('Historical pool reserves unavailable')
+  if (!isFinite(startingKendu) || startingKendu <= 0) throw new Error('Historical KENDU reserves unavailable')
+  const adjustedStartingWeth = Math.sqrt(startingWeth * startingKendu * currentWeth / currentKendu)
+  const depthMultiplier = currentWeth / adjustedStartingWeth
   return {
     currentWeth,
     startingWeth,
     multiplier: currentWeth / startingWeth,
     wethChange: ((currentWeth / startingWeth) - 1) * 100,
+    adjustedStartingWeth,
+    depthMultiplier,
+    depthChange: (depthMultiplier - 1) * 100,
   }
 }
 
@@ -1103,9 +1113,16 @@ export default async function handler(req, res) {
       const pct = Math.abs(growth.wethChange).toLocaleString('en-US', { maximumFractionDigits: range ? 1 : 0 })
       const direction = growth.wethChange >= 0 ? 'increase' : 'decrease'
       const period = range ? `over the past ${range.label}` : 'since its inception'
+      const depthMultiplier = Math.abs(growth.depthChange) < 1
+        ? growth.depthMultiplier.toFixed(3)
+        : growth.depthMultiplier >= 10 ? growth.depthMultiplier.toFixed(1) : growth.depthMultiplier.toFixed(2)
+      const depthPct = Math.abs(growth.depthChange).toLocaleString('en-US', { maximumFractionDigits: 1 })
+      const depthDirection = growth.depthChange >= 0 ? 'increase' : 'decrease'
       await sendMessage(chatId,
         `The KENDU Uniswap V2 liquidity pool has ${growth.wethChange >= 0 ? 'grown' : 'changed'} from ${amount(growth.startingWeth)} ETH to ${amount(growth.currentWeth)} ETH, ` +
-        `a <b>${multiplier}x</b> [${pct}%] ${direction} ${period}.`
+        `a <b>${multiplier}x</b> [${pct}%] ${direction} ${period}.\n\n` +
+        `<b>Depth at today's price:</b> ${amount(growth.adjustedStartingWeth)} ETH → ${amount(growth.currentWeth)} ETH\n` +
+        `<b>${depthMultiplier}x</b> [${depthPct}%] ${depthDirection} ${period}.`
       )
 
     } else if (text.startsWith('/holders')) {
