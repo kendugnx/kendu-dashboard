@@ -7,6 +7,7 @@
 const ALLOWED_ACTIONS = new Set([
   'gasoracle', 'ethprice',
   'tokenbalance', 'tokentx', 'tokenholderlist',
+  'getblocknobytime', 'getLogs',
 ])
 
 const ETH_RPC_URLS = [

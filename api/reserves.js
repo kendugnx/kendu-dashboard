@@ -31,10 +31,8 @@ async function getReservesWithFallback(pool) {
 }
 
 async function etherscan(params) {
-  const apiKey = process.env.ETHERSCAN_API_KEY
-  if (!apiKey) throw new Error('Missing ETHERSCAN_API_KEY')
-  const query = new URLSearchParams({ chainid: '1', apikey: apiKey, ...params })
-  const response = await fetch(`https://api.etherscan.io/v2/api?${query}`, { cache: 'no-store' })
+  const query = new URLSearchParams(params)
+  const response = await fetch(`https://kendu-dashboard.com/api/etherscan?${query}`, { cache: 'no-store' })
   if (!response.ok) throw new Error(`Etherscan returned ${response.status}`)
   return response.json()
 }
