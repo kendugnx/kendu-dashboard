@@ -1,4 +1,6 @@
 // api/telegram.js — Telegram bot webhook handler
+import { handleTippingCommand, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
 const SUPPLY = 996.74e9
@@ -940,6 +942,10 @@ export default async function handler(req, res) {
   const chatId = message.chat.id
   await logTrackedLinks(message, chatId)
 
+  if (tippingEnabledForChat(chatId)) {
+    await observeTippingUser(message).catch(error => console.error(`[sendu:observe] ${error.message}`))
+  }
+
   if (!message.text) return res.status(200).send('OK')
 
   const messageText = message.text.trim()
@@ -949,7 +955,11 @@ export default async function handler(req, res) {
   const text = rawText.toLowerCase()
 
   try {
-    if (text.startsWith('/start') || text.startsWith('/help')) {
+    if (isTippingCommand(rawText)) {
+      const result = await handleTippingCommand({ rawText, message })
+      if (result?.text) await sendMessage(chatId, result.text, result.options)
+
+    } else if (text.startsWith('/start') || text.startsWith('/help')) {
       await sendMessage(chatId,
         `<b>Kendu Dashboard Bot</b>\n\n` +
         `Commands:\n` +
