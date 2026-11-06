@@ -18,7 +18,7 @@ Set these in Vercel for the Telegram webhook deployment:
 
 ```text
 TIPPING_ENABLED=true
-TIPPING_TEST_CHAT_IDS=-5129334741
+TIPPING_TEST_CHAT_IDS=<test-chat-id>
 TIPPING_ADMIN_USER_IDS=7414795595
 TIPPING_DATABASE_URL=postgresql://...
 TIPPING_CLAIM_DAYS=30
@@ -40,6 +40,7 @@ The commands intentionally remain hidden from the public Telegram command menu.
 /sendu ledger
 /sendu ledger 2
 /sendu claim
+/sendu terms
 /sendu @username 1000
 ```
 
