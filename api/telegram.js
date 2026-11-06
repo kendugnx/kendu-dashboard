@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { handleTippingCallback, handleTippingCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -973,7 +973,11 @@ export default async function handler(req, res) {
   const text = rawText.toLowerCase()
 
   try {
-    if (isTippingCommand(rawText)) {
+    if (isPrivateSenduCommand(rawText, message)) {
+      const result = await handlePrivateSenduCommand(rawText, message)
+      if (result?.text) await sendMessage(chatId, result.text, result.options)
+
+    } else if (isTippingCommand(rawText)) {
       const result = await handleTippingCommand({ rawText, message })
       if (result?.text) await sendMessage(chatId, result.text, result.options)
 

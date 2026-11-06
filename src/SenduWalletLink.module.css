@@ -1,0 +1,149 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.header {
+  width: 100%;
+  border-bottom: 1px solid var(--surface-3);
+}
+
+.brand {
+  width: min(100% - 32px, 720px);
+  min-height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--fg);
+  text-decoration: none;
+  font-family: var(--font-title);
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.brand strong {
+  color: var(--accent2);
+}
+
+.main {
+  width: min(100% - 32px, 720px);
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 560px;
+  padding: 32px;
+  border: 1px solid var(--surface-3);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.eyebrow {
+  margin-bottom: 12px;
+  color: var(--accent3);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.panel h1 {
+  margin: 0 0 12px;
+  font-family: var(--font-title);
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.panel p {
+  max-width: 48ch;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.address {
+  width: 100%;
+  margin-top: 22px;
+  padding: 12px;
+  border: 1px solid var(--surface-3);
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.error {
+  margin-top: 20px;
+  padding: 12px;
+  border-left: 3px solid var(--negative);
+  background: rgba(182, 55, 51, 0.14);
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.primaryButton,
+.primaryLink {
+  min-height: 44px;
+  margin-top: 24px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent2);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primaryButton:hover,
+.primaryLink:hover {
+  background: var(--accent);
+}
+
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.securityNote {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding-top: 28px;
+  }
+
+  .panel {
+    padding: 24px 20px;
+  }
+
+  .panel h1 {
+    font-size: 27px;
+  }
+
+  .primaryButton,
+  .primaryLink {
+    width: 100%;
+  }
+}

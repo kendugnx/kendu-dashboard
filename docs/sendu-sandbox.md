@@ -43,6 +43,8 @@ The commands intentionally remain hidden from the public Telegram command menu.
 /sendu ledger 2
 /sendu claim
 /sendu terms
+/sendu link
+/sendu wallet
 /sendu @username 1000
 ```
 
@@ -59,4 +61,8 @@ An administrator can add simulated funds:
 /sendu fund @username 1000000
 ```
 
-No value in this sandbox represents real Kendu. Deposits, wallet linking, and withdrawals belong to later milestones.
+No value in this sandbox represents real Kendu. Deposits and withdrawals belong to later milestones.
+
+## Wallet linking
+
+Terms acceptance and wallet linking happen in a private chat with the bot. `/sendu link` creates a hashed, single-use dashboard token that expires after 15 minutes. The dashboard requests an EIP-191 ownership signature from MetaMask. It never requests a transaction or token approval, and the server stores only the verified public address.
