@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { handleTippingCommand, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { handleTippingCallback, handleTippingCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -137,6 +137,14 @@ async function sendMessage(chatId, text, options = {}) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...options }),
+  })
+}
+
+async function answerCallbackQuery(callbackQueryId, text, showAlert = false) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text, show_alert: showAlert }),
   })
 }
 
@@ -936,7 +944,17 @@ async function buildChartUrl(rows, rangeLabel = 'All Time', opts = {}) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('OK')
 
-  const { message } = req.body || {}
+  const { message, callback_query: callbackQuery } = req.body || {}
+  if (callbackQuery && isTippingCallback(callbackQuery.data)) {
+    try {
+      const result = await handleTippingCallback(callbackQuery)
+      await answerCallbackQuery(callbackQuery.id, result.text, result.showAlert)
+    } catch (error) {
+      console.error(`[sendu:callback] ${error.message}`)
+      await answerCallbackQuery(callbackQuery.id, 'Sendu could not save your agreement. Please try again.', true)
+    }
+    return res.status(200).send('OK')
+  }
   if (!message?.text && !message?.caption) return res.status(200).send('OK')
 
   const chatId = message.chat.id

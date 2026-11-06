@@ -11,6 +11,8 @@ The first Sendu milestone is an isolated, simulated ledger. It does not accept d
 - Tips use immutable Telegram user IDs. Usernames are display and lookup aliases only.
 - Every balance-changing Telegram command is deduplicated by chat and message ID.
 - Pending tips expire back to the sender after 30 days by default.
+- Every user must affirmatively accept the current Sendu terms before using personal balance, tip, claim, or funding commands.
+- Terms acceptance is versioned and recorded against the immutable Telegram user ID.
 
 ## Environment variables
 
