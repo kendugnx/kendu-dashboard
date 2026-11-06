@@ -37,6 +37,8 @@ The commands intentionally remain hidden from the public Telegram command menu.
 /sendu help
 /sendu balance
 /sendu history
+/sendu ledger
+/sendu ledger 2
 /sendu claim
 /sendu @username 1000
 ```
