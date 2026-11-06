@@ -89,7 +89,7 @@ export default function SenduWalletLink() {
 }
 
 async function senduRequest(body) {
-  const response = await fetch('/api/sendu', {
+  const response = await fetch('/api/telegram?sendu=wallet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
