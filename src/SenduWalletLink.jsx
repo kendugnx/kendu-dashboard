@@ -1,12 +1,16 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { createWalletClient, custom } from 'viem'
 import styles from './SenduWalletLink.module.css'
+
+const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || ''
 
 export default function SenduWalletLink() {
   const token = useMemo(() => new URLSearchParams(window.location.hash.slice(1)).get('token') || '', [])
   const [status, setStatus] = useState('idle')
   const [address, setAddress] = useState('')
+  const [linkedAddress, setLinkedAddress] = useState('')
   const [error, setError] = useState('')
+  const walletClientRef = useRef(null)
 
   async function linkWallet() {
     setError('')
@@ -14,27 +18,26 @@ export default function SenduWalletLink() {
       setError('This wallet-link request is missing or expired. Request a new link from the bot.')
       return
     }
-    if (!window.ethereum) {
-      setError('MetaMask was not detected. Open this page in a browser with MetaMask installed.')
+    if (!projectId) {
+      setError('Wallet connections are temporarily unavailable. Please try again shortly.')
+      return
+    }
+
+    if (!walletClientRef.current || !address) {
+      await connectWallet()
       return
     }
 
     try {
-      setStatus('connecting')
-      const walletClient = createWalletClient({ transport: custom(window.ethereum) })
-      const [account] = await walletClient.requestAddresses()
-      if (!account) throw new Error('No wallet account was selected')
-      setAddress(account)
-
       setStatus('preparing')
-      const challenge = await senduRequest({ action: 'challenge', token, address: account })
+      const challenge = await senduRequest({ action: 'challenge', token, address })
 
       setStatus('signing')
-      const signature = await walletClient.signMessage({ account, message: challenge.message })
+      const signature = await walletClientRef.current.signMessage({ account: address, message: challenge.message })
 
       setStatus('verifying')
-      const linked = await senduRequest({ action: 'verify', token, address: account, signature })
-      setAddress(linked.address)
+      const linked = await senduRequest({ action: 'verify', token, address, signature })
+      setLinkedAddress(linked.address)
       setStatus('complete')
     } catch (requestError) {
       const rejected = requestError?.code === 4001 || /rejected|denied/i.test(requestError?.message || '')
@@ -43,11 +46,53 @@ export default function SenduWalletLink() {
     }
   }
 
+  async function connectWallet() {
+    try {
+      setStatus('connecting')
+      const [{ default: UniversalProvider }, { WalletConnectModal }] = await Promise.all([
+        import('@walletconnect/universal-provider'),
+        import('@walletconnect/modal'),
+      ])
+      const provider = await UniversalProvider.init({
+        projectId,
+        metadata: {
+          name: 'Kendu Dashboard',
+          description: 'Kendu community dashboard and Sendu wallet linking',
+          url: window.location.origin,
+          icons: [`${window.location.origin}/kendu-mask.png`],
+        },
+      })
+      const modal = new WalletConnectModal({ projectId, chains: ['eip155:8453'], themeMode: 'dark' })
+      provider.on('display_uri', (uri) => modal.openModal({ uri, chains: ['eip155:8453'] }))
+      await provider.connect({
+        namespaces: {
+          eip155: {
+            methods: ['personal_sign'],
+            chains: ['eip155:8453'],
+            events: ['accountsChanged', 'chainChanged'],
+          },
+        },
+      })
+      modal.closeModal()
+
+      const walletClient = createWalletClient({ transport: custom(provider) })
+      const [account] = await walletClient.requestAddresses()
+      if (!account) throw new Error('No wallet account was selected')
+      walletClientRef.current = walletClient
+      setAddress(account)
+      setStatus('idle')
+    } catch (requestError) {
+      const rejected = /rejected|denied|cancelled|closed/i.test(requestError?.message || '')
+      setError(rejected ? 'The wallet connection was cancelled.' : requestError.message || 'Wallet connection failed.')
+      setStatus('idle')
+    }
+  }
+
   const buttonLabel = {
-    idle: 'Connect MetaMask',
-    connecting: 'Connecting...',
+    idle: address ? 'Verify Wallet' : 'Connect Wallet',
+    connecting: 'Choose a Wallet...',
     preparing: 'Preparing signature...',
-    signing: 'Confirm in MetaMask...',
+    signing: 'Confirm in Wallet...',
     verifying: 'Verifying...',
   }[status]
 
@@ -67,13 +112,13 @@ export default function SenduWalletLink() {
             <>
               <h1>Wallet linked</h1>
               <p>Your wallet ownership was verified and connected to your Telegram Sendu account.</p>
-              <div className={styles.address}>{address}</div>
+              <div className={styles.address}>{linkedAddress}</div>
               <a className={styles.primaryLink} href="/">Return to dashboard</a>
             </>
           ) : (
             <>
               <h1>Link your wallet</h1>
-              <p>Connect MetaMask and sign a free ownership message. This does not approve tokens, send a transaction, or expose your private key.</p>
+              <p>Connect your wallet and sign a free ownership message. This does not approve tokens, send a transaction, or expose your private key.</p>
               {address && <div className={styles.address}>{address}</div>}
               {error && <div className={styles.error} role="alert">{error}</div>}
               <button className={styles.primaryButton} type="button" onClick={linkWallet} disabled={status !== 'idle'}>
