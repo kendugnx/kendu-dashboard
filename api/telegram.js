@@ -952,7 +952,7 @@ export default async function handler(req, res) {
       await answerCallbackQuery(callbackQuery.id, result.text, result.showAlert)
     } catch (error) {
       console.error(`[sendu:callback] ${error.message}`)
-      await answerCallbackQuery(callbackQuery.id, 'Sendu could not save your agreement. Please try again.', true)
+      await answerCallbackQuery(callbackQuery.id, 'Sendu could not complete that action. Please try again.', true)
     }
     return res.status(200).send('OK')
   }
