@@ -23,20 +23,24 @@ export default function SenduWalletLink() {
       return
     }
 
-    if (!walletClientRef.current || !address) {
-      await connectWallet()
-      return
-    }
-
     try {
+      let walletClient = walletClientRef.current
+      let walletAddress = address
+      if (!walletClient || !walletAddress) {
+        const connected = await connectWallet()
+        if (!connected) return
+        walletClient = connected.walletClient
+        walletAddress = connected.address
+      }
+
       setStatus('preparing')
-      const challenge = await senduRequest({ action: 'challenge', token, address })
+      const challenge = await senduRequest({ action: 'challenge', token, address: walletAddress })
 
       setStatus('signing')
-      const signature = await walletClientRef.current.signMessage({ account: address, message: challenge.message })
+      const signature = await walletClient.signMessage({ account: walletAddress, message: challenge.message })
 
       setStatus('verifying')
-      const linked = await senduRequest({ action: 'verify', token, address, signature })
+      const linked = await senduRequest({ action: 'verify', token, address: walletAddress, signature })
       setLinkedAddress(linked.address)
       setStatus('complete')
     } catch (requestError) {
@@ -47,6 +51,7 @@ export default function SenduWalletLink() {
   }
 
   async function connectWallet() {
+    let modal
     try {
       setStatus('connecting')
       const [{ default: UniversalProvider }, { WalletConnectModal }] = await Promise.all([
@@ -62,7 +67,7 @@ export default function SenduWalletLink() {
           icons: [`${window.location.origin}/kendu-mask.png`],
         },
       })
-      const modal = new WalletConnectModal({ projectId, chains: ['eip155:8453'], themeMode: 'dark' })
+      modal = new WalletConnectModal({ projectId, chains: ['eip155:8453'], themeMode: 'dark' })
       provider.on('display_uri', (uri) => modal.openModal({ uri, chains: ['eip155:8453'] }))
       await provider.connect({
         namespaces: {
@@ -80,16 +85,18 @@ export default function SenduWalletLink() {
       if (!account) throw new Error('No wallet account was selected')
       walletClientRef.current = walletClient
       setAddress(account)
-      setStatus('idle')
+      return { walletClient, address: account }
     } catch (requestError) {
+      modal?.closeModal()
       const rejected = /rejected|denied|cancelled|closed/i.test(requestError?.message || '')
       setError(rejected ? 'The wallet connection was cancelled.' : requestError.message || 'Wallet connection failed.')
       setStatus('idle')
+      return null
     }
   }
 
   const buttonLabel = {
-    idle: address ? 'Verify Wallet' : 'Connect Wallet',
+    idle: address ? 'Retry Verification' : 'Connect Wallet',
     connecting: 'Choose a Wallet...',
     preparing: 'Preparing signature...',
     signing: 'Confirm in Wallet...',
