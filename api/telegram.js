@@ -986,6 +986,11 @@ export default async function handler(req, res) {
         `/dashboard — Open the dashboard`
       )
 
+    } else if (/^\/sendusetup(?:@\w+)?$/i.test(rawText)) {
+      if (message.from?.id === 7414795595) {
+        await sendMessage(chatId, `<b>Sendu test chat ID:</b> <code>${chatId}</code>`)
+      }
+
     } else if (text.startsWith('/test')) {
       await sendMessage(chatId, 'passed')
 
