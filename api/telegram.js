@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { completeWalletLink, createWalletChallenge, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -943,6 +943,7 @@ async function buildChartUrl(rows, rangeLabel = 'All Time', opts = {}) {
 
 export default async function handler(req, res) {
   if (req.query?.sendu === 'wallet') return handleSenduWalletApi(req, res)
+  if (req.query?.sendu === 'action') return handleSenduActionApi(req, res)
   if (req.method !== 'POST') return res.status(200).send('OK')
 
   const { message, callback_query: callbackQuery } = req.body || {}
@@ -1497,5 +1498,21 @@ async function handleSenduWalletApi(req, res) {
   } catch (error) {
     console.error(`[sendu:api:${action || 'unknown'}] ${error.message}`)
     return res.status(400).json({ error: error.message || 'Sendu wallet linking failed' })
+  }
+}
+
+async function handleSenduActionApi(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  try {
+    const { action, token, address, amount, signature, txHash, type } = req.body || {}
+    if (!token || !action) return res.status(400).json({ error: 'Missing Sendu action request' })
+    if (type === 'details') return res.status(200).json(await getSenduAction(token, action))
+    if (action === 'deposit' && type === 'complete') return res.status(200).json(await completeSenduDeposit(token, txHash))
+    if (action === 'withdraw' && type === 'challenge') return res.status(200).json(await createWithdrawalChallenge(token, address, amount))
+    if (action === 'withdraw' && type === 'complete') return res.status(200).json(await completeSenduWithdrawal(token, address, signature))
+    return res.status(400).json({ error: 'Unsupported Sendu action' })
+  } catch (error) {
+    console.error(`[sendu:action] ${error.message}`)
+    return res.status(400).json({ error: error.message || 'Sendu action failed' })
   }
 }
