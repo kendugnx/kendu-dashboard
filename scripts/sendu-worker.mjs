@@ -2,10 +2,13 @@ import postgres from 'postgres'
 import {
   createPublicClient,
   createWalletClient,
+  decodeEventLog,
+  encodeFunctionData,
   getAddress,
   http,
   keccak256,
   parseAbi,
+  parseTransaction,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base } from 'viem/chains'
@@ -18,7 +21,10 @@ const KENDU_ADDRESS = getAddress(process.env.SENDU_KENDU_BASE_ADDRESS || '0xef73
 const CONFIRMATIONS = positiveInteger(process.env.SENDU_WITHDRAWAL_CONFIRMATIONS, 5)
 const POLL_MS = positiveInteger(process.env.SENDU_WORKER_POLL_MS, 10_000)
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
-const ERC20_ABI = parseAbi(['function transfer(address to, uint256 amount) returns (bool)'])
+const ERC20_ABI = parseAbi([
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
+])
 
 if (!DATABASE_URL) throw new Error('TIPPING_DATABASE_URL is required')
 if (!/^0x[0-9a-f]{64}$/i.test(PRIVATE_KEY)) throw new Error('SENDU_COMMUNITY_WALLET_PRIVATE_KEY must be a 32-byte hex private key')
@@ -33,6 +39,7 @@ const publicClient = createPublicClient({ chain: base, transport: http(RPC_URL) 
 const walletClient = createWalletClient({ account, chain: base, transport: http(RPC_URL) })
 
 console.log(`[sendu] withdrawal worker ready for ${COMMUNITY_ADDRESS}`)
+await auditConfirmedWithdrawals()
 await sql`
   update sendu_withdrawals
   set status = 'pending', updated_at = now(), error = 'Recovered after worker restart'
@@ -51,7 +58,7 @@ while (true) {
 
 async function processExistingTransaction() {
   const [withdrawal] = await sql`
-    select id, telegram_id, amount_raw, status, raw_transaction, tx_hash
+    select id, telegram_id, to_address, amount_raw, status, raw_transaction, tx_hash
     from sendu_withdrawals
     where status in ('broadcasting', 'sent')
     order by created_at
@@ -78,6 +85,11 @@ async function processExistingTransaction() {
   if (receipt.status !== 'success') {
     await refundWithdrawal(withdrawal.id, 'Base transaction reverted')
     await notify(withdrawal.telegram_id, `<b>Sendu withdrawal failed</b>\nYour ${formatRaw(withdrawal.amount_raw)} Kendu was returned to your Sendu balance.`)
+    return true
+  }
+  if (!hasExpectedTransfer(receipt, withdrawal)) {
+    await refundWithdrawal(withdrawal.id, 'Transaction confirmed without the expected Kendu transfer')
+    await notify(withdrawal.telegram_id, `<b>Sendu withdrawal failed</b>\nNo Kendu left the community wallet. Your ${formatRaw(withdrawal.amount_raw)} Kendu was returned to your Sendu balance.`)
     return true
   }
 
@@ -113,15 +125,29 @@ async function processPendingWithdrawal() {
   if (!withdrawal) return false
 
   try {
-    const { request } = await publicClient.simulateContract({
+    await publicClient.simulateContract({
       account,
       address: KENDU_ADDRESS,
       abi: ERC20_ABI,
       functionName: 'transfer',
       args: [getAddress(withdrawal.to_address), BigInt(withdrawal.amount_raw)],
     })
-    const prepared = await walletClient.prepareTransactionRequest(request)
+    const data = encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [getAddress(withdrawal.to_address), BigInt(withdrawal.amount_raw)],
+    })
+    const prepared = await walletClient.prepareTransactionRequest({
+      account,
+      to: KENDU_ADDRESS,
+      data,
+      value: 0n,
+    })
     const serialized = await walletClient.signTransaction(prepared)
+    const signed = parseTransaction(serialized)
+    if (signed.to?.toLowerCase() !== KENDU_ADDRESS.toLowerCase() || signed.data !== data) {
+      throw new Error('Refusing to broadcast malformed Kendu transfer')
+    }
     const txHash = keccak256(serialized)
     await sql`
       update sendu_withdrawals
@@ -144,6 +170,72 @@ async function processPendingWithdrawal() {
     }
   }
   return true
+}
+
+async function auditConfirmedWithdrawals() {
+  const withdrawals = await sql`
+    select id, telegram_id, to_address, amount_raw, tx_hash
+    from sendu_withdrawals
+    where status = 'confirmed' and tx_hash is not null
+    order by confirmed_at desc
+    limit 100
+  `
+  for (const withdrawal of withdrawals) {
+    try {
+      const receipt = await publicClient.getTransactionReceipt({ hash: withdrawal.tx_hash })
+      if (receipt.status === 'success' && !hasExpectedTransfer(receipt, withdrawal)) {
+        const refunded = await refundConfirmedInvalidWithdrawal(withdrawal.id, 'Confirmed transaction did not transfer Kendu')
+        if (refunded) {
+          console.error(`[sendu] refunded invalid confirmed withdrawal ${withdrawal.id}`)
+          await notify(withdrawal.telegram_id, `<b>Sendu withdrawal corrected</b>\nNo Kendu left the community wallet. Your ${formatRaw(withdrawal.amount_raw)} Kendu was returned to your Sendu balance.`)
+        }
+      }
+    } catch (error) {
+      console.error(`[sendu] audit ${withdrawal.id}: ${error.message}`)
+    }
+  }
+}
+
+function hasExpectedTransfer(receipt, withdrawal) {
+  return receipt.logs.some(log => {
+    if (log.address.toLowerCase() !== KENDU_ADDRESS.toLowerCase()) return false
+    try {
+      const decoded = decodeEventLog({ abi: ERC20_ABI, data: log.data, topics: log.topics })
+      return decoded.eventName === 'Transfer'
+        && decoded.args.from.toLowerCase() === COMMUNITY_ADDRESS.toLowerCase()
+        && decoded.args.to.toLowerCase() === getAddress(withdrawal.to_address).toLowerCase()
+        && decoded.args.value === BigInt(withdrawal.amount_raw)
+    } catch {
+      return false
+    }
+  })
+}
+
+async function refundConfirmedInvalidWithdrawal(id, reason) {
+  return sql.begin(async tx => {
+    const [row] = await tx`
+      select id, telegram_id, amount_raw, status
+      from sendu_withdrawals
+      where id = ${id}
+      for update
+    `
+    if (!row || row.status !== 'confirmed') return false
+    await tx`
+      update sendu_withdrawals
+      set status = 'failed', error = ${String(reason).slice(0, 500)}, updated_at = now()
+      where id = ${id} and status = 'confirmed'
+    `
+    await tx`
+      update sendu_live_accounts
+      set balance_raw = balance_raw + ${row.amount_raw}::numeric, updated_at = now()
+      where telegram_id = ${row.telegram_id}
+    `
+    await tx`
+      insert into sendu_live_ledger (telegram_id, amount_raw, kind, reference_id)
+      values (${row.telegram_id}, ${row.amount_raw}::numeric, 'withdrawal_refund', ${id})
+    `
+    return true
+  })
 }
 
 async function refundWithdrawal(id, reason) {
