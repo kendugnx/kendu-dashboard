@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createWalletClient, custom, parseAbi, parseUnits } from 'viem'
+import { base } from 'viem/chains'
 import styles from './SenduWalletLink.module.css'
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || ''
@@ -22,9 +23,9 @@ export default function SenduTransfer({ action }) {
 
   async function submit() {
     setError('')
-    const amountPattern = action === 'withdraw' ? /^\d+$/ : /^\d+(?:\.\d{1,18})?$/
-    if (!amount || !amountPattern.test(amount)) {
-      setError(action === 'withdraw' ? 'Enter a whole Kendu amount.' : 'Enter a valid Kendu amount.')
+    const normalizedAmount = normalizeKenduAmount(amount, action === 'deposit')
+    if (!normalizedAmount) {
+      setError('Enter a valid Kendu amount, such as 10000000, 10,000,000, or 10m.')
       return
     }
     try {
@@ -41,14 +42,15 @@ export default function SenduTransfer({ action }) {
           address: details.tokenAddress,
           abi: ERC20_ABI,
           functionName: 'transfer',
-          args: [details.communityAddress, parseUnits(amount, 18)],
+          args: [details.communityAddress, parseUnits(normalizedAmount, 18)],
+          chain: base,
         })
         setStatus('waiting')
         const credited = await waitForDeposit(txHash)
         setResult({ title: 'Deposit credited', detail: `${credited.amount} Kendu`, txHash })
       } else {
         setStatus('preparing')
-        const challenge = await senduAction({ action, type: 'challenge', token, address: connected.address, amount })
+        const challenge = await senduAction({ action, type: 'challenge', token, address: connected.address, amount: normalizedAmount })
         setStatus('signing')
         const signature = await connected.client.signMessage({ account: connected.address, message: challenge.message })
         setStatus('submitting')
@@ -104,7 +106,7 @@ export default function SenduTransfer({ action }) {
         },
       })
       modal.closeModal()
-      const client = createWalletClient({ transport: custom(provider) })
+      const client = createWalletClient({ chain: base, transport: custom(provider) })
       const [address] = await client.requestAddresses()
       if (!address) throw new Error('No wallet account was selected')
       const connected = { client, address }
@@ -154,7 +156,7 @@ export default function SenduTransfer({ action }) {
                 : 'Sign a free authorization to withdraw Kendu to your linked wallet.'}</p>
               {details?.walletAddress && <div className={styles.address}>{details.walletAddress}</div>}
               <label className={styles.fieldLabel} htmlFor="sendu-amount">Kendu amount</label>
-              <input id="sendu-amount" className={styles.amountInput} inputMode={action === 'withdraw' ? 'numeric' : 'decimal'} value={amount} onChange={event => setAmount(event.target.value)} placeholder="1000" disabled={isBusy} />
+              <input id="sendu-amount" className={styles.amountInput} inputMode="text" autoCapitalize="none" value={amount} onChange={event => setAmount(event.target.value)} placeholder="1000, 10,000,000, or 10m" disabled={isBusy} />
               {error && <div className={styles.error} role="alert">{error}</div>}
               <button className={styles.primaryButton} type="button" onClick={submit} disabled={isBusy || !details || !projectId}>
                 {labels[status] || 'Processing...'}
@@ -177,4 +179,20 @@ async function senduAction(body) {
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json.error || 'Sendu request failed')
   return json
+}
+
+function normalizeKenduAmount(value, allowFractional) {
+  const match = String(value || '').trim().replace(/,/g, '').match(/^(\d+(?:\.\d+)?)\s*([kmb]?)$/i)
+  if (!match) return null
+  const suffixDecimals = { k: 3, m: 6, b: 9 }[match[2].toLowerCase()]
+  if (suffixDecimals != null) {
+    try {
+      return parseUnits(match[1], suffixDecimals).toString()
+    } catch {
+      return null
+    }
+  }
+  if (!allowFractional && match[1].includes('.')) return null
+  if ((match[1].split('.')[1] || '').length > 18) return null
+  return match[1]
 }
