@@ -28,6 +28,10 @@ export default function SenduTransfer({ action }) {
       setError('Enter a valid Kendu amount, such as 10000000, 10,000,000, or 10m.')
       return
     }
+    if (action === 'deposit' && details?.depositLimit && parseUnits(normalizedAmount, 18) > BigInt(details.depositLimit.raw)) {
+      setError(`The current Sendu deposit limit for this account is ${details.depositLimit.display} Kendu.`)
+      return
+    }
     try {
       const connected = walletRef.current || await connectWallet()
       if (!connected) return
@@ -47,7 +51,13 @@ export default function SenduTransfer({ action }) {
         })
         setStatus('waiting')
         const credited = await waitForDeposit(txHash)
-        setResult({ title: 'Deposit credited', detail: `${credited.amount} Kendu`, txHash })
+        setResult({
+          title: credited.autoWithdrawal ? 'Deposit credited; payout queued' : 'Deposit credited',
+          detail: credited.autoWithdrawal
+            ? `${credited.autoWithdrawal.amount} Kendu is being returned to your linked wallet under the Sendu safety limits.`
+            : `${credited.amount} Kendu`,
+          txHash,
+        })
       } else {
         setStatus('preparing')
         const challenge = await senduAction({ action, type: 'challenge', token, address: connected.address, amount: normalizedAmount })

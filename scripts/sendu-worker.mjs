@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import postgres from 'postgres'
 import {
   createPublicClient,
@@ -20,9 +21,17 @@ const COMMUNITY_ADDRESS = getAddress(process.env.SENDU_COMMUNITY_WALLET_ADDRESS 
 const KENDU_ADDRESS = getAddress(process.env.SENDU_KENDU_BASE_ADDRESS || '0xef73611F98DA6E57e0776317957af61B59E09Ed7')
 const CONFIRMATIONS = positiveInteger(process.env.SENDU_WITHDRAWAL_CONFIRMATIONS, 5)
 const POLL_MS = positiveInteger(process.env.SENDU_WORKER_POLL_MS, 10_000)
+const HEALTH_MS = positiveInteger(process.env.SENDU_HEALTH_CHECK_MS, 30_000)
+const MIN_GAS_WEI = BigInt(process.env.SENDU_MIN_GAS_WEI || '200000000000000')
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
+const PRICE_URL = process.env.SENDU_PRICE_URL || 'https://api.dexscreener.com/latest/dex/pairs/ethereum/0xd9f2a7471d1998c69de5cae6df5d3f070f01df9f'
+const TOKEN_SCALE = 10n ** 18n
+const USER_TOKEN_CAP_RAW = parseWholeTokens(process.env.SENDU_USER_TOKEN_CAP || '10m') * TOKEN_SCALE
+const USER_USD_CAP_SCALED = usdScaled(process.env.SENDU_USER_USD_CAP || '500')
+const GLOBAL_USD_CAP_SCALED = usdScaled(process.env.SENDU_GLOBAL_USD_CAP || '5000')
 const ERC20_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
+  'function balanceOf(address account) view returns (uint256)',
   'event Transfer(address indexed from, address indexed to, uint256 value)',
 ])
 
@@ -37,8 +46,11 @@ if (account.address !== COMMUNITY_ADDRESS) {
 const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 20, connect_timeout: 10 })
 const publicClient = createPublicClient({ chain: base, transport: http(RPC_URL) })
 const walletClient = createWalletClient({ account, chain: base, transport: http(RPC_URL) })
+let lastHealthCheck = 0
 
 console.log(`[sendu] withdrawal worker ready for ${COMMUNITY_ADDRESS}`)
+await ensureSystemStatusTable()
+await refreshSystemStatus()
 await auditConfirmedWithdrawals()
 await sql`
   update sendu_withdrawals
@@ -48,11 +60,125 @@ await sql`
 
 while (true) {
   try {
+    if (Date.now() - lastHealthCheck >= HEALTH_MS) await refreshSystemStatus()
     const worked = await processExistingTransaction() || await processPendingWithdrawal()
     if (!worked) await sleep(POLL_MS)
   } catch (error) {
     console.error(`[sendu] worker loop: ${error.message}`)
     await sleep(POLL_MS)
+  }
+}
+
+async function ensureSystemStatusTable() {
+  await sql`
+    create table if not exists sendu_system_status (
+      id boolean primary key default true check (id),
+      worker_seen_at timestamptz,
+      checked_at timestamptz,
+      price_usd numeric(30, 18),
+      wallet_balance_raw numeric(78, 0),
+      liabilities_raw numeric(78, 0),
+      gas_wei numeric(78, 0),
+      healthy boolean not null default false,
+      error text,
+      updated_at timestamptz not null default now()
+    )
+  `
+  await sql`insert into sendu_system_status (id) values (true) on conflict do nothing`
+  await sql`alter table sendu_withdrawals add column if not exists automatic boolean not null default false`
+  await sql`alter table sendu_withdrawals add column if not exists reason text`
+}
+
+async function refreshSystemStatus() {
+  lastHealthCheck = Date.now()
+  try {
+    const [walletBalance, gasBalance, priceResponse, [liabilities]] = await Promise.all([
+      publicClient.readContract({ address: KENDU_ADDRESS, abi: ERC20_ABI, functionName: 'balanceOf', args: [COMMUNITY_ADDRESS] }),
+      publicClient.getBalance({ address: COMMUNITY_ADDRESS }),
+      fetch(PRICE_URL, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) }),
+      sql`
+        select (
+          coalesce((select sum(balance_raw) from sendu_live_accounts), 0) +
+          coalesce((select sum(amount_raw) from sendu_live_tips where status = 'pending' and expires_at > now()), 0) +
+          coalesce((select sum(amount_raw) from sendu_withdrawals where status in ('pending', 'processing', 'broadcasting', 'sent')), 0)
+        )::numeric as amount_raw
+      `,
+    ])
+    if (!priceResponse.ok) throw new Error(`Kendu price source returned ${priceResponse.status}`)
+    const priceJson = await priceResponse.json()
+    const priceUsd = Number(priceJson?.pair?.priceUsd)
+    if (!Number.isFinite(priceUsd) || priceUsd <= 0) throw new Error('Kendu price source returned an invalid price')
+    const liabilitiesRaw = BigInt(liabilities?.amount_raw || 0)
+    const reconciled = walletBalance >= liabilitiesRaw
+    const gasOk = gasBalance >= MIN_GAS_WEI
+    const healthy = reconciled && gasOk
+    const error = !reconciled ? 'Community wallet balance is below ledger liabilities' : !gasOk ? 'Community wallet gas is below the configured minimum' : null
+    await sql`
+      update sendu_system_status set
+        worker_seen_at = now(), checked_at = now(), price_usd = ${priceUsd},
+        wallet_balance_raw = ${walletBalance.toString()}::numeric,
+        liabilities_raw = ${liabilitiesRaw.toString()}::numeric,
+        gas_wei = ${gasBalance.toString()}::numeric,
+        healthy = ${healthy}, error = ${error}, updated_at = now()
+      where id = true
+    `
+    if (healthy) await queueSafetyPayouts(priceUsd, walletBalance)
+  } catch (error) {
+    await sql`
+      update sendu_system_status set worker_seen_at = now(), checked_at = now(), healthy = false,
+        error = ${String(error.message || error).slice(0, 500)}, updated_at = now()
+      where id = true
+    `.catch(dbError => console.error(`[sendu] health status: ${dbError.message}`))
+    console.error(`[sendu] health check: ${error.message}`)
+  }
+}
+
+async function queueSafetyPayouts(priceUsd, walletBalanceRaw) {
+  const priceScaled = usdScaled(String(priceUsd))
+  const usdUserCapRaw = (USER_USD_CAP_SCALED * TOKEN_SCALE) / priceScaled
+  const userCapRaw = usdUserCapRaw < USER_TOKEN_CAP_RAW ? usdUserCapRaw : USER_TOKEN_CAP_RAW
+  const globalCapRaw = (GLOBAL_USD_CAP_SCALED * TOKEN_SCALE) / priceScaled
+  let globalExcessRaw = walletBalanceRaw > globalCapRaw ? walletBalanceRaw - globalCapRaw : 0n
+  const candidates = await sql`
+    select a.telegram_id, a.balance_raw, w.address
+    from sendu_live_accounts a
+    join sendu_wallets w on w.telegram_id = a.telegram_id
+    where a.balance_raw > 0
+      and not exists (
+        select 1 from sendu_withdrawals recent
+        where recent.telegram_id = a.telegram_id and recent.automatic = true
+          and recent.status = 'failed' and recent.updated_at > now() - interval '1 hour'
+      )
+    order by a.balance_raw desc
+  `
+  for (const candidate of candidates) {
+    const candidateBalance = BigInt(candidate.balance_raw)
+    if (candidateBalance < userCapRaw && globalExcessRaw <= 0n) continue
+    const queued = await sql.begin(async tx => {
+      const [accountRow] = await tx`
+        select balance_raw from sendu_live_accounts
+        where telegram_id = ${candidate.telegram_id}
+        for update
+      `
+      const amountRaw = BigInt(accountRow?.balance_raw || 0)
+      if (amountRaw <= 0n) return 0n
+      const id = crypto.randomUUID()
+      const reason = amountRaw >= userCapRaw ? 'user_cap' : 'global_cap'
+      await tx`update sendu_live_accounts set balance_raw = 0, updated_at = now() where telegram_id = ${candidate.telegram_id}`
+      await tx`
+        insert into sendu_withdrawals (id, telegram_id, to_address, amount_raw, status, automatic, reason)
+        values (${id}, ${candidate.telegram_id}, ${candidate.address}, ${amountRaw.toString()}::numeric, 'pending', true, ${reason})
+      `
+      await tx`
+        insert into sendu_live_ledger (telegram_id, amount_raw, kind, reference_id)
+        values (${candidate.telegram_id}, ${(-amountRaw).toString()}::numeric, 'withdrawal_reserved', ${id})
+      `
+      return amountRaw
+    })
+    if (queued > 0n) {
+      await notify(candidate.telegram_id, `<b>Sendu safety payout queued</b>\n${formatRaw(queued)} Kendu is being sent to your linked wallet because a Sendu custody limit was reached.`)
+    }
+    if (globalExcessRaw > 0n) globalExcessRaw = queued >= globalExcessRaw ? 0n : globalExcessRaw - queued
   }
 }
 
@@ -283,6 +409,21 @@ function formatRaw(value) {
 function positiveInteger(value, fallback) {
   const number = Number(value)
   return Number.isInteger(number) && number > 0 ? number : fallback
+}
+
+function parseWholeTokens(value) {
+  const match = String(value || '').trim().replace(/,/g, '').match(/^(\d+(?:\.\d+)?)\s*([kmb]?)$/i)
+  if (!match) throw new Error('Invalid Sendu token limit')
+  const decimals = { '': 0, k: 3, m: 6, b: 9 }[match[2].toLowerCase()]
+  const [whole, fraction = ''] = match[1].split('.')
+  if (fraction.length > decimals) throw new Error('Invalid Sendu token limit')
+  return BigInt(whole) * (10n ** BigInt(decimals)) + BigInt((fraction + '0'.repeat(decimals)).slice(0, decimals) || '0')
+}
+
+function usdScaled(value) {
+  const decimal = Number(value)
+  if (!Number.isFinite(decimal) || decimal <= 0) throw new Error('Invalid Sendu USD limit or price')
+  return BigInt(Math.ceil(decimal * 1e12))
 }
 
 function sleep(ms) {
