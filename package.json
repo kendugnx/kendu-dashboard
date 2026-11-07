@@ -9,7 +9,8 @@
     "bot:setup-commands": "node scripts/setup-bot-commands.js",
     "buybot:once": "node scripts/buy-bot.mjs --announce-existing",
     "buybot:dry-run": "BUY_BOT_DRY_RUN=1 node scripts/buy-bot.mjs --announce-existing",
-    "buybot:watch": "node scripts/buy-bot.mjs --watch"
+    "buybot:watch": "node scripts/buy-bot.mjs --watch",
+    "sendu:worker": "node scripts/sendu-worker.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
