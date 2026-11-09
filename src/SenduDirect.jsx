@@ -89,6 +89,16 @@ export default function SenduDirect() {
     confirming: 'Confirm in Wallet...', waiting: 'Verifying Base Transaction...',
   }
   const busy = !['idle', 'error'].includes(status)
+  const insufficientKendu = details && BigInt(details.senderKenduRaw) < BigInt(details.amountRaw)
+  const noGas = details && BigInt(details.senderGasWei) === 0n
+  const lowGas = details && BigInt(details.senderGasWei) < 10_000_000_000_000n
+  const balanceWarning = insufficientKendu
+    ? 'This wallet does not have enough Base Kendu for this Sendu.'
+    : noGas
+      ? 'This wallet has no Base ETH for gas.'
+      : lowGas
+        ? 'This wallet may be low on Base ETH for gas.'
+        : ''
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -103,15 +113,23 @@ export default function SenduDirect() {
           </> : <>
             <h1>Send {details?.amount || ''} Kendu</h1>
             <p>{details ? `${details.sender} → ${details.recipient}` : 'Loading transfer details...'}</p>
-            {details && <div className={styles.address}>{details.recipientAddress}</div>}
+            {details && <>
+              <div className={styles.address}>Recipient: {shortAddress(details.recipientAddress)}</div>
+              <p><strong>Wallet balance:</strong> {details.senderKendu} Kendu<br /><strong>Base ETH:</strong> {details.senderGas} ETH</p>
+            </>}
+            {balanceWarning && <div className={styles.error} role="alert">{balanceWarning}</div>}
             {error && <div className={styles.error} role="alert">{error}</div>}
-            <button className={styles.primaryButton} type="button" onClick={submit} disabled={busy || !details || !projectId}>{labels[status] || 'Processing...'}</button>
+            <button className={styles.primaryButton} type="button" onClick={submit} disabled={busy || !details || !projectId || insufficientKendu || noGas}>{labels[status] || 'Processing...'}</button>
             <div className={styles.securityNote}>Direct wallet transfer · Base network · Review in your wallet</div>
           </>}
         </section>
       </main>
     </div>
   )
+}
+
+function shortAddress(address) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 async function directRequest(body) {

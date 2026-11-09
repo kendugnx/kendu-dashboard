@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, markDirectSenduAnnounced, markDirectSenduApprovalMessageDeleted, observeTippingUser, saveDirectSenduApprovalMessage, tippingEnabledForChat } from '../lib/tipping.js'
+import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, markDirectSenduAnnounced, markDirectSenduApprovalMessageDeleted, markDirectSenduRecipientNotified, observeTippingUser, saveDirectSenduApprovalMessage, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -180,6 +180,20 @@ async function deleteDirectApprovalMessage(request) {
     await markDirectSenduApprovalMessageDeleted(request.id)
   } catch (error) {
     console.error(`[sendu:delete-approval] request=${request.id} ${error.message}`)
+  }
+}
+
+async function notifyDirectRecipient(request) {
+  if (request.recipient_notified_at) return
+  try {
+    await sendMessageChecked(
+      request.recipient_id,
+      `<b>Kendu Sendu received!</b>\nYou received <b>${request.amount} Kendu</b>.\n\n<a href="https://basescan.org/tx/${request.tx_hash}">View Base transaction</a>`,
+      { disable_web_page_preview: true, link_preview_options: { is_disabled: true } },
+    )
+    await markDirectSenduRecipientNotified(request.id)
+  } catch (error) {
+    console.error(`[sendu:recipient-notification] request=${request.id} ${error.message}`)
   }
 }
 
@@ -1050,7 +1064,10 @@ export default async function handler(req, res) {
         if (result.markAnnouncementId) {
           await sendMessageChecked(chatId, result.text, result.options)
           await markDirectSenduAnnounced(result.markAnnouncementId)
-          if (result.approvalMessage) await deleteDirectApprovalMessage(result.approvalMessage)
+          if (result.approvalMessage) {
+            await notifyDirectRecipient(result.approvalMessage)
+            await deleteDirectApprovalMessage(result.approvalMessage)
+          }
         } else {
           await sendMessage(chatId, result.text, result.options)
         }
@@ -1608,6 +1625,7 @@ async function handleDirectSenduApi(req, res) {
           return res.status(503).json({ error: 'The transfer is verified, but the public announcement is still pending. Retrying now.' })
         }
       }
+      await notifyDirectRecipient(completed)
       await deleteDirectApprovalMessage(completed)
       return res.status(200).json({ amount: completed.amount, txHash: completed.tx_hash })
     }
