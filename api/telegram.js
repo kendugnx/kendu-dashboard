@@ -140,6 +140,30 @@ async function sendMessage(chatId, text, options = {}) {
   })
 }
 
+async function trySendPrivateMessage(message) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: message.chatId,
+        text: message.text,
+        parse_mode: 'HTML',
+        ...message.options,
+      }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      console.error(`[sendu:private] ${error.description || `Telegram returned ${response.status}`}`)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error(`[sendu:private] ${error.message}`)
+    return false
+  }
+}
+
 async function answerCallbackQuery(callbackQueryId, text, showAlert = false) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
     method: 'POST',
@@ -982,6 +1006,12 @@ export default async function handler(req, res) {
 
     } else if (isTippingCommand(rawText)) {
       const result = await handleTippingCommand({ rawText, message })
+      if (result?.privateMessage) {
+        const delivered = await trySendPrivateMessage(result.privateMessage)
+        if (!delivered) {
+          await sendMessage(chatId, `${message.from.username ? `@${message.from.username}, ` : ''}I could not deliver your Kendu Sendu link privately. Open a private chat with the bot, send <code>/sendu</code>, then try again.`)
+        }
+      }
       if (result?.text) await sendMessage(chatId, result.text, result.options)
 
     } else if (text.startsWith('/start') || text.startsWith('/help')) {
