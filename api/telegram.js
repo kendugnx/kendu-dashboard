@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, markDirectSenduAnnounced, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, markDirectSenduAnnounced, markDirectSenduApprovalMessageDeleted, observeTippingUser, saveDirectSenduApprovalMessage, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -155,12 +155,31 @@ async function trySendPrivateMessage(message) {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       console.error(`[sendu:private] ${error.description || `Telegram returned ${response.status}`}`)
-      return false
+      return { delivered: false }
     }
-    return true
+    const result = await response.json().catch(() => ({}))
+    return { delivered: true, messageId: result.result?.message_id }
   } catch (error) {
     console.error(`[sendu:private] ${error.message}`)
-    return false
+    return { delivered: false }
+  }
+}
+
+async function deleteDirectApprovalMessage(request) {
+  if (!request.approval_chat_id || !request.approval_message_id || request.approval_message_deleted_at) return
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: request.approval_chat_id, message_id: request.approval_message_id }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.description || `Telegram returned ${response.status}`)
+    }
+    await markDirectSenduApprovalMessageDeleted(request.id)
+  } catch (error) {
+    console.error(`[sendu:delete-approval] request=${request.id} ${error.message}`)
   }
 }
 
@@ -1019,8 +1038,11 @@ export default async function handler(req, res) {
     } else if (isTippingCommand(rawText)) {
       const result = await handleTippingCommand({ rawText, message })
       if (result?.privateMessage) {
-        const delivered = await trySendPrivateMessage(result.privateMessage)
-        if (!delivered) {
+        const delivery = await trySendPrivateMessage(result.privateMessage)
+        if (delivery.delivered && delivery.messageId && result.privateMessage.requestId) {
+          await saveDirectSenduApprovalMessage(result.privateMessage.requestId, result.privateMessage.chatId, delivery.messageId)
+        }
+        if (!delivery.delivered) {
           await sendMessage(chatId, `${message.from.username ? `@${message.from.username}, ` : ''}I could not deliver your Kendu Sendu link privately. Open a private chat with the bot, send <code>/sendu</code>, then try again.`)
         }
       }
@@ -1028,6 +1050,7 @@ export default async function handler(req, res) {
         if (result.markAnnouncementId) {
           await sendMessageChecked(chatId, result.text, result.options)
           await markDirectSenduAnnounced(result.markAnnouncementId)
+          if (result.approvalMessage) await deleteDirectApprovalMessage(result.approvalMessage)
         } else {
           await sendMessage(chatId, result.text, result.options)
         }
@@ -1585,6 +1608,7 @@ async function handleDirectSenduApi(req, res) {
           return res.status(503).json({ error: 'The transfer is verified, but the public announcement is still pending. Retrying now.' })
         }
       }
+      await deleteDirectApprovalMessage(completed)
       return res.status(200).json({ amount: completed.amount, txHash: completed.tx_hash })
     }
     return res.status(400).json({ error: 'Unsupported Kendu Sendu action' })
