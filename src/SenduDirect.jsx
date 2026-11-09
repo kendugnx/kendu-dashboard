@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createWalletClient, custom, parseAbi } from 'viem'
 import { base } from 'viem/chains'
 import styles from './SenduWalletLink.module.css'
+import { connectInjectedWallet } from './utils/injectedWallet.js'
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || ''
 const ERC20_ABI = parseAbi(['function transfer(address to, uint256 amount) returns (bool)'])
@@ -59,6 +60,11 @@ export default function SenduDirect() {
 
   async function connectWallet() {
     setStatus('connecting')
+    const injectedWallet = await connectInjectedWallet()
+    if (injectedWallet) {
+      walletRef.current = injectedWallet
+      return injectedWallet
+    }
     const [{ default: UniversalProvider }, { WalletConnectModal }] = await Promise.all([
       import('@walletconnect/universal-provider'), import('@walletconnect/modal'),
     ])

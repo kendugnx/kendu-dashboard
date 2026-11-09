@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { createWalletClient, custom } from 'viem'
+import { base } from 'viem/chains'
 import styles from './SenduWalletLink.module.css'
+import { connectInjectedWallet } from './utils/injectedWallet.js'
 
 const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || ''
 
@@ -54,6 +56,12 @@ export default function SenduWalletLink() {
     let modal
     try {
       setStatus('connecting')
+      const injectedWallet = await connectInjectedWallet()
+      if (injectedWallet) {
+        walletClientRef.current = injectedWallet.client
+        setAddress(injectedWallet.address)
+        return { walletClient: injectedWallet.client, address: injectedWallet.address }
+      }
       const [{ default: UniversalProvider }, { WalletConnectModal }] = await Promise.all([
         import('@walletconnect/universal-provider'),
         import('@walletconnect/modal'),
@@ -80,7 +88,7 @@ export default function SenduWalletLink() {
       })
       modal.closeModal()
 
-      const walletClient = createWalletClient({ transport: custom(provider) })
+      const walletClient = createWalletClient({ chain: base, transport: custom(provider) })
       const [account] = await walletClient.requestAddresses()
       if (!account) throw new Error('No wallet account was selected')
       walletClientRef.current = walletClient
