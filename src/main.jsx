@@ -10,6 +10,7 @@ const SenduDirect = lazy(() => import('./SenduDirect.jsx'))
 
 if (window.Telegram?.WebApp) {
   window.Telegram.WebApp.expand()
+  window.Telegram.WebApp.disableVerticalSwipes?.()
   window.Telegram.WebApp.ready()
 }
 
