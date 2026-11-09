@@ -6,6 +6,7 @@ import SnapshotEmbed from './SnapshotEmbed.jsx'
 
 const SenduWalletLink = lazy(() => import('./SenduWalletLink.jsx'))
 const SenduTransfer = lazy(() => import('./SenduTransfer.jsx'))
+const SenduDirect = lazy(() => import('./SenduDirect.jsx'))
 
 if (window.Telegram?.WebApp) {
   window.Telegram.WebApp.expand()
@@ -14,13 +15,16 @@ if (window.Telegram?.WebApp) {
 
 const isSnapshotEmbed = window.location.pathname === '/embed/snapshot'
 const isSenduWalletLink = window.location.pathname === '/sendu/link'
+const isSenduDirect = window.location.pathname === '/sendu/direct'
 const senduTransferAction = window.location.pathname === '/sendu/deposit'
   ? 'deposit'
   : window.location.pathname === '/sendu/withdraw' ? 'withdraw' : null
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {isSnapshotEmbed ? <SnapshotEmbed /> : senduTransferAction ? (
+    {isSnapshotEmbed ? <SnapshotEmbed /> : isSenduDirect ? (
+      <Suspense fallback={null}><SenduDirect /></Suspense>
+    ) : senduTransferAction ? (
       <Suspense fallback={null}><SenduTransfer action={senduTransferAction} /></Suspense>
     ) : isSenduWalletLink ? (
       <Suspense fallback={null}><SenduWalletLink /></Suspense>

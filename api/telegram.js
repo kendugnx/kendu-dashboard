@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -944,6 +944,7 @@ async function buildChartUrl(rows, rangeLabel = 'All Time', opts = {}) {
 export default async function handler(req, res) {
   if (req.query?.sendu === 'wallet') return handleSenduWalletApi(req, res)
   if (req.query?.sendu === 'action') return handleSenduActionApi(req, res)
+  if (req.query?.sendu === 'direct') return handleDirectSenduApi(req, res)
   if (req.method !== 'POST') return res.status(200).send('OK')
 
   const { message, callback_query: callbackQuery } = req.body || {}
@@ -1514,5 +1515,26 @@ async function handleSenduActionApi(req, res) {
   } catch (error) {
     console.error(`[sendu:action] ${error.message}`)
     return res.status(400).json({ error: error.message || 'Sendu action failed' })
+  }
+}
+
+async function handleDirectSenduApi(req, res) {
+  res.setHeader('Cache-Control', 'no-store')
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  try {
+    const { token, txHash, type } = req.body || {}
+    if (typeof token !== 'string' || token.length < 32 || token.length > 128) return res.status(400).json({ error: 'Invalid Direct Sendu request' })
+    if (type === 'details') return res.status(200).json(await getDirectSendu(token))
+    if (type === 'complete') {
+      const completed = await completeDirectSendu(token, txHash)
+      if (completed.newlyCompleted) {
+        await sendMessage(completed.chat_id, directAnnouncementText(completed), { link_preview_options: { is_disabled: true } })
+      }
+      return res.status(200).json({ amount: completed.amount, txHash: completed.tx_hash })
+    }
+    return res.status(400).json({ error: 'Unsupported Direct Sendu action' })
+  } catch (error) {
+    console.error(`[sendu:direct] ${error.message}`)
+    return res.status(400).json({ error: error.message || 'Direct Sendu failed' })
   }
 }
