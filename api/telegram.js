@@ -1523,7 +1523,7 @@ async function handleDirectSenduApi(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     const { token, txHash, type } = req.body || {}
-    if (typeof token !== 'string' || token.length < 32 || token.length > 128) return res.status(400).json({ error: 'Invalid Direct Sendu request' })
+    if (typeof token !== 'string' || token.length < 32 || token.length > 128) return res.status(400).json({ error: 'Invalid Kendu Sendu request' })
     if (type === 'details') return res.status(200).json(await getDirectSendu(token))
     if (type === 'complete') {
       const completed = await completeDirectSendu(token, txHash)
@@ -1532,9 +1532,9 @@ async function handleDirectSenduApi(req, res) {
       }
       return res.status(200).json({ amount: completed.amount, txHash: completed.tx_hash })
     }
-    return res.status(400).json({ error: 'Unsupported Direct Sendu action' })
+    return res.status(400).json({ error: 'Unsupported Kendu Sendu action' })
   } catch (error) {
     console.error(`[sendu:direct] ${error.message}`)
-    return res.status(400).json({ error: error.message || 'Direct Sendu failed' })
+    return res.status(400).json({ error: error.message || 'Kendu Sendu failed' })
   }
 }

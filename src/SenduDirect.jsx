@@ -42,7 +42,7 @@ export default function SenduDirect() {
       setStatus('complete')
     } catch (requestError) {
       const rejected = requestError?.code === 4001 || /rejected|denied/i.test(requestError?.message || '')
-      setError(rejected ? 'The wallet request was cancelled.' : requestError.message || 'Direct Sendu failed.')
+      setError(rejected ? 'The wallet request was cancelled.' : requestError.message || 'Kendu Sendu failed.')
       setStatus('idle')
     }
   }
@@ -64,7 +64,7 @@ export default function SenduDirect() {
     ])
     const provider = await UniversalProvider.init({
       projectId,
-      metadata: { name: 'Kendu Dashboard', description: 'Direct Kendu Sendu', url: window.location.origin, icons: [`${window.location.origin}/kendu-mask.png`] },
+      metadata: { name: 'Kendu Dashboard', description: 'Kendu Sendu', url: window.location.origin, icons: [`${window.location.origin}/kendu-mask.png`] },
     })
     const modal = new WalletConnectModal({ projectId, chains: ['eip155:8453'], themeMode: 'dark' })
     provider.on('display_uri', uri => modal.openModal({ uri, chains: ['eip155:8453'] }))
@@ -96,7 +96,7 @@ export default function SenduDirect() {
       </header>
       <main className={styles.main}>
         <section className={styles.panel}>
-          <div className={styles.eyebrow}>DIRECT KENDU SENDU</div>
+          <div className={styles.eyebrow}>KENDU SENDU</div>
           {status === 'complete' ? <>
             <h1>Sendu complete</h1><p>{details.amount} Kendu was sent directly to {details.recipient}.</p>
             <a className={styles.primaryLink} href={`https://basescan.org/tx/${txHash}`}>View transaction</a>
@@ -117,6 +117,6 @@ export default function SenduDirect() {
 async function directRequest(body) {
   const response = await fetch('/api/telegram?sendu=direct', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(json.error || 'Direct Sendu failed')
+  if (!response.ok) throw new Error(json.error || 'Kendu Sendu failed')
   return json
 }
