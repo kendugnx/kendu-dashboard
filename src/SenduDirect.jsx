@@ -50,7 +50,7 @@ export default function SenduDirect() {
   async function waitForVerification(hash) {
     for (let attempt = 0; attempt < 45; attempt += 1) {
       try { return await directRequest({ type: 'complete', token, txHash: hash }) } catch (requestError) {
-        if (!/not found|not confirmed|required confirmations/i.test(requestError.message || '')) throw requestError
+        if (!/not found|not confirmed|required confirmations|announcement is still pending/i.test(requestError.message || '')) throw requestError
       }
       await new Promise(resolve => setTimeout(resolve, 4000))
     }

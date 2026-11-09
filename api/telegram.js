@@ -1,5 +1,5 @@
 // api/telegram.js — Telegram bot webhook handler
-import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
+import { completeDirectSendu, completeSenduDeposit, completeSenduWithdrawal, completeWalletLink, createWalletChallenge, createWithdrawalChallenge, directAnnouncementText, getDirectSendu, getSenduAction, handlePrivateSenduCommand, handleTippingCallback, handleTippingCommand, isPrivateSenduCommand, isTippingCallback, isTippingCommand, markDirectSenduAnnounced, observeTippingUser, tippingEnabledForChat } from '../lib/tipping.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 
@@ -161,6 +161,18 @@ async function trySendPrivateMessage(message) {
   } catch (error) {
     console.error(`[sendu:private] ${error.message}`)
     return false
+  }
+}
+
+async function sendMessageChecked(chatId, text, options = {}) {
+  const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...options }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.description || `Telegram returned ${response.status}`)
   }
 }
 
@@ -1012,7 +1024,14 @@ export default async function handler(req, res) {
           await sendMessage(chatId, `${message.from.username ? `@${message.from.username}, ` : ''}I could not deliver your Kendu Sendu link privately. Open a private chat with the bot, send <code>/sendu</code>, then try again.`)
         }
       }
-      if (result?.text) await sendMessage(chatId, result.text, result.options)
+      if (result?.text) {
+        if (result.markAnnouncementId) {
+          await sendMessageChecked(chatId, result.text, result.options)
+          await markDirectSenduAnnounced(result.markAnnouncementId)
+        } else {
+          await sendMessage(chatId, result.text, result.options)
+        }
+      }
 
     } else if (text.startsWith('/start') || text.startsWith('/help')) {
       await sendMessage(chatId,
@@ -1557,8 +1576,14 @@ async function handleDirectSenduApi(req, res) {
     if (type === 'details') return res.status(200).json(await getDirectSendu(token))
     if (type === 'complete') {
       const completed = await completeDirectSendu(token, txHash)
-      if (completed.newlyCompleted) {
-        await sendMessage(completed.chat_id, directAnnouncementText(completed), { link_preview_options: { is_disabled: true } })
+      if (!completed.announced_at) {
+        try {
+          await sendMessageChecked(completed.chat_id, directAnnouncementText(completed), { link_preview_options: { is_disabled: true } })
+          await markDirectSenduAnnounced(completed.id)
+        } catch (error) {
+          console.error(`[sendu:announcement] request=${completed.id} chat=${completed.chat_id} ${error.message}`)
+          return res.status(503).json({ error: 'The transfer is verified, but the public announcement is still pending. Retrying now.' })
+        }
       }
       return res.status(200).json({ amount: completed.amount, txHash: completed.tx_hash })
     }
