@@ -1106,6 +1106,9 @@ export default async function handler(req, res) {
     } else if (text.startsWith('/gnx')) {
       await sendAnimation(chatId, 'https://kendu-dashboard.com/meh.gif')
 
+    } else if (text.startsWith('/axl')) {
+      await sendPhoto(chatId, 'https://kendu-dashboard.com/AXL.JPG')
+
     } else if (text.startsWith('/gmx')) {
       await sendMessage(chatId, '/lorniko')
       await sendMessage(chatId, 'Good Morniko 😍')
