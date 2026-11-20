@@ -103,7 +103,6 @@ async function main() {
 
   const state = await readState()
   await pollAllChains(state, { announceHistorical: args.has('--announce-existing') })
-  await writeState(state)
 
   if (!watchMode) return
 
@@ -111,7 +110,6 @@ async function main() {
     await sleep(pollMs)
     try {
       await pollAllChains(state, { announceHistorical: false })
-      await writeState(state)
     } catch (err) {
       console.error(`[buy-bot] ${err.stack || err.message}`)
     }
@@ -169,14 +167,11 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
       const samples = buys.slice(-3)
       for (const event of samples) {
         await enrichWalletTier(event)
-        await announceBuy(event)
-        state.recent.push(publicEvent(event))
-        state.seen[chainKey] = event.id
-        state.recent = state.recent.slice(-500)
-        await writeState(state)
+        const claim = await claimBuy(state, event)
+        if (claim) await announceClaimedBuy(state, event, claim)
       }
     }
-    if (latestId) state.seen[chainKey] = latestId
+    if (latestId) await updateSeen(state, chainKey, latestId)
     console.log(`[${chain.label}] primed ${buys.length} buys; latest=${latestId || 'none'}`)
     return
   }
@@ -184,13 +179,13 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
   const lastSeen = state.seen[chainKey]
   const lastSeenIndex = buys.findIndex(event => event.id === lastSeen)
   if (lastSeenIndex === -1) {
-    if (latestId) state.seen[chainKey] = latestId
+    if (latestId) await updateSeen(state, chainKey, latestId)
     console.log(`[${chain.label}] resynced ${buys.length} buys; latest=${latestId || 'none'}`)
     return
   }
 
-  const recentIds = new Set(state.recent.map(event => event.id))
-  const newBuys = buys.slice(lastSeenIndex + 1).filter(event => !recentIds.has(event.id))
+  const recentKeys = new Set(state.recent.map(eventKey))
+  const newBuys = buys.slice(lastSeenIndex + 1).filter(event => !recentKeys.has(eventKey(event)))
 
   if (!newBuys.length) {
     console.log(`[${chain.label}] no new buys`)
@@ -199,14 +194,73 @@ async function pollChain(chainKey, state, { announceHistorical }, marketCap) {
 
   for (const event of newBuys) {
     await enrichWalletTier(event)
-    await announceBuy(event)
-    state.recent.push(publicEvent(event))
-    state.seen[chainKey] = event.id
-    state.recent = state.recent.slice(-500)
-    await writeState(state)
+    const claim = await claimBuy(state, event)
+    if (claim) await announceClaimedBuy(state, event, claim)
   }
 
   console.log(`[${chain.label}] processed ${newBuys.length} new buys`)
+}
+
+async function claimBuy(state, event) {
+  return withStateLock(async () => {
+    const saved = await readState()
+    syncState(state, saved)
+    const key = eventKey(event)
+    if (state.recent.some(item => eventKey(item) === key)) return false
+
+    const previousSeen = state.seen[event.chainKey] || null
+    state.recent.push(publicEvent(event))
+    state.recent = state.recent.slice(-500)
+    state.seen[event.chainKey] = event.id
+    await writeState(state)
+    return { previousSeen }
+  })
+}
+
+async function updateSeen(state, chainKey, tradeId) {
+  await withStateLock(async () => {
+    const saved = await readState()
+    syncState(state, saved)
+    state.seen[chainKey] = tradeId
+    await writeState(state)
+  })
+}
+
+async function announceClaimedBuy(state, event, claim) {
+  try {
+    await announceBuy(event)
+  } catch (error) {
+    if (error?.safeToRetry) {
+      await rollbackClaim(state, event, claim.previousSeen)
+    } else {
+      console.error(`[${event.chain}] Telegram delivery uncertain for ${event.hash}; retaining claim to prevent duplicates`)
+    }
+    throw error
+  }
+}
+
+async function rollbackClaim(state, event, previousSeen) {
+  await withStateLock(async () => {
+    const saved = await readState()
+    syncState(state, saved)
+    const key = eventKey(event)
+    state.recent = state.recent.filter(item => eventKey(item) !== key)
+    if (state.seen[event.chainKey] === event.id) {
+      state.seen[event.chainKey] = previousSeen
+    }
+    await writeState(state)
+  })
+}
+
+function eventKey(event) {
+  const chainKey = String(event?.chainKey || event?.chain || '').toLowerCase()
+  const transaction = String(event?.hash || event?.id || '').toLowerCase()
+  return `${chainKey}:${transaction}`
+}
+
+function syncState(target, source) {
+  target.seen = { ...(source?.seen || {}) }
+  target.recent = Array.isArray(source?.recent) ? source.recent : []
 }
 
 async function fetchTrades(chain) {
@@ -579,7 +633,7 @@ async function sendTelegram(method, payload) {
     body: JSON.stringify(payload),
   })
   const json = await res.json().catch(() => null)
-  if (!res.ok || !json?.ok) throw new Error(json?.description || `Telegram ${method} failed`)
+  if (!res.ok || !json?.ok) throw retryableTelegramError(json?.description || `Telegram ${method} failed`)
 }
 
 async function sendTelegramMultipart(method, payload) {
@@ -599,7 +653,13 @@ async function sendTelegramMultipart(method, payload) {
     body: form,
   })
   const json = await res.json().catch(() => null)
-  if (!res.ok || !json?.ok) throw new Error(json?.description || `Telegram ${method} failed`)
+  if (!res.ok || !json?.ok) throw retryableTelegramError(json?.description || `Telegram ${method} failed`)
+}
+
+function retryableTelegramError(message) {
+  const error = new Error(message)
+  error.safeToRetry = true
+  return error
 }
 
 function formatBuyAlert(event) {
@@ -701,6 +761,37 @@ async function writeState(state) {
   const tempFile = `${stateFile}.tmp-${process.pid}`
   await fs.writeFile(tempFile, JSON.stringify(state, null, 2))
   await fs.rename(tempFile, stateFile)
+}
+
+async function withStateLock(callback) {
+  const fs = await import('node:fs/promises')
+  const lockDir = `${stateFile}.lock`
+  await fs.mkdir(dirname(lockDir), { recursive: true })
+
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      await fs.mkdir(lockDir)
+      try {
+        return await callback()
+      } finally {
+        await fs.rm(lockDir, { recursive: true, force: true })
+      }
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error
+      try {
+        const stat = await fs.stat(lockDir)
+        if (Date.now() - stat.mtimeMs > 120000) {
+          await fs.rm(lockDir, { recursive: true, force: true })
+          continue
+        }
+      } catch (statError) {
+        if (statError?.code !== 'ENOENT') throw statError
+      }
+      await sleep(100)
+    }
+  }
+
+  throw new Error(`Timed out waiting for buy-bot state lock: ${lockDir}`)
 }
 
 async function loadDotenv() {
